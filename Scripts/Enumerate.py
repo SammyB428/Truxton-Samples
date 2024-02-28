@@ -9,6 +9,7 @@ import truxton
 
 trux = truxton.create()
 artifact_type_names = json.loads(trux.entitytypenames())
+content_status_names = json.loads(trux.contentstatusnames())
 data_type_names = json.loads(trux.datatypenames())
 event_type_names = json.loads(trux.eventtypenames())
 location_type_names = json.loads(trux.locationtypenames())
@@ -23,17 +24,32 @@ url_type_names = json.loads(trux.urltypenames())
 file_type_names = json.loads(trux.filetypenames())
 file_mime_types = json.loads(trux.filemimetypes())
 
+def main():
+ investigations = trux.newenumerator()
+ investigations.target = truxton.Type_Investigation
+
+ print("[")
+ instance = 0
+ for investigation in investigations:
+  dump_investigation(investigation, instance)
+  instance += 1
+ print("]")
+ 
 def get_citation(enumerator: truxton.TruxtonEnumeration) -> dict:
  citation = dict()
 
  if enumerator.currentfile is not None:
   md5 = dict()
   md5["algorithm"] = "md5"
-  md5["value"] = enumerator.currentfile.md5.upper()
+  
+  if enumerator.currentfile.md5 is not None:
+   md5["value"] = enumerator.currentfile.md5.upper()
 
   sha1 = dict()
   sha1["algorithm"] = "sha1"
-  sha1["value"] = enumerator.currentfile.sha1.upper()
+  
+  if enumerator.currentfile.sha1 is not None:
+   sha1["value"] = enumerator.currentfile.sha1.upper()
 
   hashes = []
   hashes.append(md5)
@@ -144,7 +160,7 @@ def exif_dictionary(camera_information: truxton.TruxtonEXIF) -> None:
  d["altitude"] = str(camera_information.altitude)
  d["heading"] = str(camera_information.heading)
  d["focallength"] = str(camera_information.focallength)
- d["shuttercount"] = str(camera_information.focallength)
+ d["shuttercount"] = str(camera_information.shuttercount)
  d["gpstime"] = F"{camera_information.gpstime:%Y-%m-%dT%H:%M:%SZ}"
  d["devicetime"] = F"{camera_information.devicetime:%Y-%m-%dT%H:%M:%SZ}"
  d["offset"] = str(camera_information.offset)
@@ -170,7 +186,7 @@ def file_dictionary(file_information: truxton.TruxtonFileIO) -> dict:
  d["parentid"] = file_information.parentid.lower()
  d["path"] = file_information.path
  d["size"] = file_information.size
- #d["status"] = file_information.status
+ d["status"] = content_status_names[str(file_information.status)]
  type_dict = dict()
  type_dict["id"] = file_information.type
  type_dict["name"] = file_type_names[str(file_information.type)]
@@ -398,24 +414,13 @@ def dump_investigation(investigation: truxton.TruxtonInvestigation, instance: in
 
 def dump_media(media: truxton.TruxtonMedia) -> None:
  output_media(media)
+ files(media)
  artifacts(media)
  events(media)
  locations(media)
  urls(media)
  exif(media)
  communication(media)
- files(media)
-
-def main():
- investigations = trux.newenumerator()
- investigations.target = truxton.Type_Investigation
-
- print("[")
- instance = 0
- for investigation in investigations:
-  dump_investigation(investigation, instance)
-  instance += 1
- print("]")
 
 if __name__ == "__main__":
- main()
+ sys.exit(main())
