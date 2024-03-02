@@ -9,8 +9,8 @@ from calendar import timegm
 from pathlib import Path
 from inspect import currentframe, getframeinfo
 
-sys.path.append('C:/Program Files/Truxton/SDK')
-#sys.path.append('C:/Users/Sam/Documents/GitHub/Truxton/Libraries/Python/PyTrux/x64/Debug')
+#sys.path.append('C:/Program Files/Truxton/SDK')
+sys.path.append('C:/Users/Sam/Documents/GitHub/Truxton/Libraries/Python/PyTrux/x64/Debug')
 import truxton
 
 # https://www.scribd.com/document/377540616/PS-LP-Text-Messages-Dec-2016-May-2017#from_embed
@@ -99,7 +99,6 @@ def main() -> None:
   # Now add the things we gathered
   add_crossfire_razor_files(razor_root)
   add_crossfire_typhoon_files(typhoon_root)
-  add_crossfire_fury_files(fury_root)
   add_crossfire_dragon_files(dragon_root)
   stephen_laycock(root_file)
 
@@ -215,6 +214,7 @@ def add_campaign_events(parent_file: truxton.TruxtonChildFileIO) -> None:
   return None
 
 def add_clinton_campaign_events(parent_file: truxton.TruxtonChildFileIO) -> None:
+  #child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "speedtest.sqlite")
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Campaign.txt")
 
   add_event( child_file, "2015-04-12T12:00:00-04:00", "2015-04-12T12:00:00-05:00", "Clinton announces candidacy", "Youtube", EVENT_TYPE_HILLARY )
@@ -224,38 +224,8 @@ def add_clinton_campaign_events(parent_file: truxton.TruxtonChildFileIO) -> None
   return None
 
 def add_crossfire_typhoon_files(parent_file: truxton.TruxtonChildFileIO) -> None:
-  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "speedtest.sqlite")
-  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/120919-examination.pdf")
-
-  url = child_file.newurl()
-  url.url = "https://www.justice.gov/storage/120919-examination.pdf"
-  url.localfilename = "120919-examination.pdf"
-  url.type = truxton.URL_TYPE_FIREFOX
-  url.method = truxton.URL_METHOD_TYPE_CLICKED_ON_A_LINK
-  url.format = truxton.URL_FORMAT_ASCII
-  url.when = datetime.fromisoformat("2019-09-01T12:00:00-05:00")
-  url.save()
-
-  add_event( child_file, "2016-08-10T12:00:00-04:00", "2016-08-10T12:00:00-05:00", "FBI opens Foreign Agents Registration Act (FARA) case on Papadopoulos (Crossfire Typhoon)", "FBI IG Report page 59", EVENT_TYPE_FBI )
-
   add_papadopoulos(parent_file)
   add_daily_caller_1(parent_file)
-
-  return None
-
-def add_crossfire_fury_files(parent_file: truxton.TruxtonChildFileIO) -> None:
-  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/120919-examination.pdf")
-
-  url = child_file.newurl()
-  url.url = "https://www.justice.gov/storage/120919-examination.pdf"
-  url.localfilename = "120919-examination.pdf"
-  url.type = truxton.URL_TYPE_FIREFOX
-  url.method = truxton.URL_METHOD_TYPE_CLICKED_ON_A_LINK
-  url.format = truxton.URL_FORMAT_ASCII
-  url.when = datetime.fromisoformat("2019-09-01T12:00:00-05:00")
-  url.save()
-
-  add_event( child_file, "2016-08-10T12:00:00-04:00", "2016-08-10T12:00:00-04:00", "FBI opens Foreign Agents Registration Act (FARA) case on Paul Manafort (Crossfire Fury)", "FBI IG Report page 59", EVENT_TYPE_FBI )
 
   return None
 
@@ -883,7 +853,7 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2017-02-24T23:31:22-00:00", "K. Call in 5?")
   page_to_strzok(child_file, "2017-02-24T23:31:36-00:00", "Yup")
   m = strzok_to_page(child_file, "2017-02-25T00:44:26-00:00", "Aaaaand just leaving. Just spent an hour with GZT and Bill in my office dealing with crazy *ss people at the Ft... who started by pushing for a personal meeting between pf and the AG \U0001f612\U0001f612\U0001f612")
-  m.addnote("the Ft - Fort Meade, NSA")
+  m.addnote("GZT - George Z. Toscas National Security Division, the Ft - Fort Meade, NSA")
   strzok_to_page(child_file, "2017-02-25T00:51:23-00:00", "How did --Redacted-- do?")
   page_to_strzok(child_file, "2017-02-25T01:15:06-00:00", "That sucks. I'm sorry. We're on the same side as doj, right? Good. Kids went to the playground with her while J cooked. Totally ideal")
   strzok_to_page(child_file, "2017-02-25T01:19:32-00:00", "Yeah George was totally on our side. He said for a moment he wished he could channel Cole on this topic with them. They're just wildly doing dumb, poorly thought through things. Also putting Rod in very bad spot pre confirmation hearings. Yay! I'm SO glad. Absolute")
@@ -963,7 +933,8 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
 
   # Page 48, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
   strzok_to_page(child_file, "2017-03-24T01:27:14-00:00", "I hope they understand the primary likelies are the pols at WH and DoJ, not the poor SAs and IAs....\U0001f612")
-  strzok_to_page(child_file, "2017-03-28T14:46:00-00:00", "Just coming back from entertaining mtg at doj where GZT and Swartz got testy at each other.")
+  m = strzok_to_page(child_file, "2017-03-28T14:46:00-00:00", "Just coming back from entertaining mtg at doj where GZT and Swartz got testy at each other.")
+  m.addnote("GZT - George Z. Toscas National Security Division")
   strzok_to_page(child_file, "2017-03-28T14:47:22-00:00", "No, turks. But yes in that Flynn is friction point")
   page_to_strzok(child_file, "2017-03-28T16:33:59-00:00", "God I'm so f*cking mad I feel like quitting.")
   strzok_to_page(child_file, "2017-03-28T16:42:33-00:00", "What? Just talked to Andy, on your corridor...")
@@ -991,7 +962,8 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2017-04-12T20:51:10-00:00", "Whew. Glad you made it. Awful news related to the draft you --Redacted-- and I went thru yesterday.")
   strzok_to_page(child_file, "2017-04-12T21:00:12-00:00", "Check gmail \U0001f62c\U0001f62c")
   page_to_strzok(child_file, "2017-04-12T21:40:32-00:00", "K. Will send an email now.")
-  strzok_to_page(child_file, "2017-04-12T22:31:02-00:00", "Oh sweet Jesus that's awful. I'm sorry \U0001f626 And I'll be clear work v personal. The bad news re matter we talked about yesterday is gzt said they were told on Fri that case will go to John Durham, not NSD.")
+  m = strzok_to_page(child_file, "2017-04-12T22:31:02-00:00", "Oh sweet Jesus that's awful. I'm sorry \U0001f626 And I'll be clear work v personal. The bad news re matter we talked about yesterday is gzt said they were told on Fri that case will go to John Durham, not NSD.")
+  m.addnote("GZT - George Z. Toscas National Security Division")
   page_to_strzok(child_file, "2017-04-12T22:33:37-00:00", "Yes")
   strzok_to_page(child_file, "2017-04-12T22:58:10-00:00", "And harumph. Baker clearly talked to Bill about whatever you heard Bill is clearly not telling me about it, and Bill just set up a one hour meeting with --Redacted-- (the new team lead) and Baker specifically not me on Friday. So I guess I'll eventually hear about it from you, and hope Bill and JB and the guy who's been on the job for two days make good decisions. \0001f612")
   strzok_to_page(child_file, "2017-04-22T15:35:36-00:00", "Well done, Page \U0001f636")
@@ -1018,7 +990,8 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2017-05-10T00:14:26-00:00", "And we need to open the case we've been waiting on now while Andy is acting.")
 
   # Page 51, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
-  page_to_strzok(child_file, "2017-05-10T09:29:51-00:00", "We need to lock in typhoon. In a formal chargeable way. Soon.")
+  m = page_to_strzok(child_file, "2017-05-10T09:29:51-00:00", "We need to lock in typhoon. In a formal chargeable way. Soon.")
+  m.addnote("typhoon - Crossfire Typhoon - George Papadopoulos")
   strzok_to_page(child_file, "2017-05-10T09:30:56-00:00", "I agree. I've been pushing and I'll reemphasize with Bill.")
   strzok_to_page(child_file, "2017-05-11T15:33:23-00:00", "Nailed it! I have goosebumps.")
   page_to_strzok(child_file, "2017-05-11T15:33:59-00:00", "Me too")
@@ -1110,22 +1083,6 @@ def add_crossfire_razor_files(parent_file: truxton.TruxtonChildFileIO) -> None:
 
   add_event( child_file, "2016-07-27T01:59:00-05:00", "2016-07-27T01:59:00-05:00", "Report: Flynn had dinner in Moscow", "Politico", EVENT_TYPE_FLYNN )
 
-  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/120919-examination.pdf")
-
-  url = child_file.newurl()
-  url.url = "https://www.justice.gov/storage/120919-examination.pdf"
-  url.localfilename = "120919-examination.pdf"
-  url.type = truxton.URL_TYPE_FIREFOX
-  url.method = truxton.URL_METHOD_TYPE_CLICKED_ON_A_LINK
-  url.format = truxton.URL_FORMAT_ASCII
-  url.when = datetime.fromisoformat("2019-09-01T12:00:00-05:00")
-  url.save()
-
-  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Crossfire Dragon (Page Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
-  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Crossfire Fury (Manafort Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
-  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Crossfire Typhoon (Papadopoulos Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
-  add_event( child_file, "2016-08-16T12:00:00-05:00", "2016-08-16T12:00:00-05:00", "FBI opens Crossfire Razor (Flynn Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
-
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/From Russia with love why the Kremlin backs Trump Reuters.pdf")
   url = child_file.newurl()
   url.url = "https://www.reuters.com/article/us-usa-election-trump-russia-idUSKCN0WQ1FA"
@@ -1149,30 +1106,7 @@ def add_crossfire_razor_files(parent_file: truxton.TruxtonChildFileIO) -> None:
   return None
 
 def add_crossfire_dragon_files(parent_file: truxton.TruxtonChildFileIO) -> None:
-  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/120919-examination.pdf")
-
-  url = child_file.newurl()
-  url.url = "https://www.justice.gov/storage/120919-examination.pdf"
-  url.localfilename = "120919-examination.pdf"
-  url.type = truxton.URL_TYPE_FIREFOX
-  url.method = truxton.URL_METHOD_TYPE_CLICKED_ON_A_LINK
-  url.format = truxton.URL_FORMAT_ASCII
-  url.when = datetime.fromisoformat("2019-09-01T12:00:00-05:00")
-  url.save()
-
   # 456781456-2018-DOJ-Letter-to-FISC.pdf
-  add_event( child_file, "2017-01-12T12:00:00-05:00", "2017-01-12T12:05:00-05:00", "FISA warrant renewed on Carter Page", "Docket 2017-0052 FBI IG Report Executive Summary page VI, Page 209, Signed by Judge Michael W. Mosman", EVENT_TYPE_FISA )
-  add_event( child_file, "2017-04-07T12:00:00-05:00", "2017-04-07T12:05:00-05:00", "FISA warrant renewed on Carter Page", "Docket 2017-0375 FBI IG Report Executive Summary page VI", EVENT_TYPE_FISA )
-  add_event( child_file, "2017-06-29T12:00:00-05:00", "2017-06-29T12:05:00-05:00", "FISA warrant renewed on Carter Page", "Docket 2017-0679 FBI IG Report Executive Summary page VI", EVENT_TYPE_FISA )
-  # add_event( child_file, "2016-10-21T12:00:00-05:00", "2017-09-21T12:00:00-05:00", "Carter Page under FISA surveillance", "FBI IG Report Executive Summary page VI", EVENT_TYPE_FISA )
-  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Foreign Agents Registration Act (FARA) case on Carter Page (Crossfire Dragon)", "FBI IG Report page 59", EVENT_TYPE_FBI )
-  add_event( child_file, "2016-08-17T12:00:00-05:00", "2016-08-17T12:00:00-05:00", "CIA tells Crossfire Hurricane that Carter Page was an asset for five years", "FBI IG Report page 79, notification known as August 17 Memorandum", EVENT_TYPE_CIA )
-  add_event( child_file, "2016-08-20T12:00:00-05:00", "2016-08-20T12:00:00-05:00", "FBI CHS operation 1 - Carter Page", "FBI IG Report page 317", EVENT_TYPE_FBI )
-  add_event( child_file, "2016-10-17T12:00:00-05:00", "2016-10-17T12:00:00-05:00", "FBI CHS operation 1 Part 2 - Carter Page", "FBI IG Report page 320", EVENT_TYPE_FBI )
-  add_event( child_file, "2016-12-15T12:00:00-05:00", "2016-12-15T12:00:00-05:00", "FBI CHS operation 1 Part 3 - Carter Page", "FBI IG Report page 323", EVENT_TYPE_FBI )
-  add_event( child_file, "2017-01-25T12:00:00-05:00", "2017-01-25T12:00:00-05:00", "FBI CHS operation 1 Part 4 - Carter Page asked if he knew Flynn", "FBI IG Report page 325", EVENT_TYPE_FBI )
-  add_event( child_file, "2017-07-13T12:00:00-05:00", "2017-07-13T12:00:00-05:00", "Carter Page Physical Search", "Photos from search uploaded to FBI server did not follow Standard Minimization Procedures (SMP). FISA Footnotes - Page 6 Note 379", EVENT_TYPE_FBI )
-  add_event( child_file, "2017-07-29T12:00:00-05:00", "2017-07-29T12:00:00-05:00", "Physical Search", "Photos from search uploaded to FBI server did not follow Standard Minimization Procedures (SMP). FISA Footnotes - Page 6 Note 379", EVENT_TYPE_FBI )
 
   return None
 
@@ -1294,6 +1228,7 @@ def add_mccabe_page_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   mccabe_to_page(child_file, "2016-10-13T10:14:00-00:00", "Please. \U0001f60a")
   mccabe_to_page(child_file, "2016-10-13T10:14:01-00:00", "Call my cell when you are free to chat.")
   mccabe_to_page(child_file, "2016-10-13T10:23:00-00:00", "Also, let me know if there is a --Redacted-- that you are related to. I'm guessing not, but just wanted to check.")
+  mccabe_to_page(child_file, "2016-10-13T10:23:00-00:00", "Also, let me know if there is a --Redacted-- that you are related to. I'm guessing not, but just wanted to check.")
   mccabe_to_page(child_file, "2016-10-13T11:00:00-00:00", "Rgr. Thanks.")
   page_to_mccabe(child_file, "2016-10-13T11:00:01-00:00", "Call u after 830")
   page_to_mccabe(child_file, "2016-10-13T11:00:02-00:00", "No Sam I am.")
@@ -1318,19 +1253,7 @@ def add_mccabe_page_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   page_to_mccabe(child_file, "2016-10-15T18:53:01-00:00", "See if you can change it to something like \"space for additional fbi employees assigned abroad\"")
   mccabe_to_page(child_file, "2016-10-15T18:53:03-00:00", "Got it. Just needed clearance on the statement. Will let the team know. Thanks.")
   page_to_mccabe(child_file, "2016-10-15T18:54:00-00:00", "Need me to step out and call?")
-
-  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "McCabe Page Text.pdf")
-  child_file.tag("Text Messages", "The main McCabe<->Page Messages", truxton.TAG_ORIGIN_HUMAN)
-
-  url = child_file.newurl()
-  url.url = "https://www.scribd.com/document/403323155/McCabe-Page-Meeting-Text"
-  url.localfilename = "McCabe Page Text.pdf"
-  url.type = truxton.URL_TYPE_FIREFOX
-  url.method = truxton.URL_METHOD_TYPE_CLICKED_ON_A_LINK
-  url.format = truxton.URL_FORMAT_ASCII
-  url.when = datetime.fromisoformat("2019-03-27T12:00:00-05:00")
-  url.save()  
-  
+ 
   mccabe_to_page(child_file, "2016-11-15T19:19:00-00:00", "16 packages tomorrow. 4 may come separately because the still need to be signed.")
   m = mccabe_to_page(child_file, "2016-11-16T14:32:00-00:00", "Hey can you call me on your way back. One flag for the sac svtc.")
   m.addnote("svtc - Secure Video Teleconference")
@@ -1430,7 +1353,7 @@ def add_ignatius(parent_file: truxton.TruxtonChildFileIO) -> None:
   artifact.save()
 
   e = add_event( child_file, "2017-01-11T12:00:00-05:00", "2017-01-11T12:00:00-05:00", "Flynn Dec 29th phone call leaked to Washington Post", "David Ignatius", EVENT_TYPE_FBI)
-  e.tag("Leak", "Source unknown", truxton.TAG_ORIGIN_HUMAN)
+  e.tag("Leak", "Source unknown, possible Clapper who was know to leak to Ignatius", truxton.TAG_ORIGIN_HUMAN)
   add_event( child_file, "2017-01-12T12:00:00-05:00", "2017-01-12T12:00:00-05:00", "David Ignatius article about Flynn-Kislyac phone call published", "David Ignatius", EVENT_TYPE_FBI)
   return None
 
@@ -2026,7 +1949,7 @@ def add_mccabe_donations(parent_file: truxton.TruxtonChildFileIO) -> None:
   url.when = datetime.fromisoformat("2022-11-13T00:03:15-05:00")
   url.save()
   
-  m = add_event(child_file, "2015-06-09T12:00:00-05:00", "2015-06-09T12:00:00-05:00", "Jill McCabe Receives $7,500 from Terry McAuliffe", "Wife of Andrew McCabe, her first-ever campaign Page 1. She raised $1,668,014, twice the amount of her opponent she lost to.", EVENT_TYPE_FBI )
+  m = add_event(child_file, "2015-06-09T12:00:00-05:00", "2015-06-09T12:00:00-05:00", "Jill McCabe Receives $7,500 from Terry McAuliffe", "Wife of Andrew McCabe, for State Senate District 13, her first-ever campaign Page 1. She raised $1,668,014, twice the amount of her opponent she lost to.", EVENT_TYPE_FBI )
   m = add_event(child_file, "2015-06-19T12:00:00-05:00", "2015-06-19T12:00:00-05:00", "Jill McCabe Receives $7,500 from Terry McAuliffe ($15,000 total)", "Wife of Andrew McCabe, her first-ever campaign Page 1. She raised $1,668,014, twice the amount of her opponent she lost to.", EVENT_TYPE_FBI )
   m = add_event(child_file, "2015-08-31T12:00:00-05:00", "2015-08-31T12:00:00-05:00", "Jill McCabe Receives $2,500 from Terry McAuliffe ($17,500 total)", "Wife of Andrew McCabe, her first-ever campaign Page 1. She raised $1,668,014, twice the amount of her opponent she lost to.", EVENT_TYPE_FBI )
   m = add_event(child_file, "2015-10-01T12:00:00-05:00", "2015-10-01T12:00:00-05:00", "Jill McCabe Receives $150,000 from Terry McAuliffe ($167,500 total)", "Wife of Andrew McCabe, her first-ever campaign Page 1. She raised $1,668,014, twice the amount of her opponent she lost to.", EVENT_TYPE_FBI )
@@ -2045,7 +1968,7 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   add_event(child_file, "2017-01-13T12:00:00-05:00", "2017-01-13T12:00:00-05:00", "FBI briefs DOJ on background Flynn investigation call. Strzok, Priestap, Sally Moyer", "Page 33", EVENT_TYPE_FBI )
   m = add_event(child_file, "2017-01-15T12:00:00-05:00", "2017-01-15T12:00:00-05:00", "Pence on Face the Nation", "Page 33", EVENT_TYPE_FBI )
   m.addnote("McCord upset that Pence lied. Said Flynn didn't discuss sanctions.")
-  add_event(child_file, "2017-01-19T12:00:00-05:00", "2017-01-19T12:00:00-05:00", "Comey visiting ODNI", "Page 35", EVENT_TYPE_FBI )
+  add_event(child_file, "2017-01-19T12:00:00-05:00", "2017-01-19T12:00:00-05:00", "Comey visiting ODNI (Clapper and Brennan believed to be present)", "Page 35", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-24T12:00:00-05:00", "2017-01-24T12:00:00-05:00", "Yates calls Comey to force him to tell White House of Flynn investigation, Comey tells her he was interviewed that day. Yates dumbfounded.", "Page 35", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-04T14:11:00-05:00", "2017-01-04T14:11:00-05:00", "From Strzok: Hey if you havent closed --Redacted-- don't do it yet", "Page 77", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-04T14:12:00-05:00", "2017-01-04T14:12:00-05:00", "From Strzok: Sorry, RAZOR", "Page 77", EVENT_TYPE_FBI )
@@ -2082,6 +2005,7 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   add_event(child_file, "2017-01-04T16:00:00-05:00", "2017-01-04T16:00:00-05:00", "--Redacted--: Bill meaning Preistep, correct?", "Page 78", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-04T16:08:00-05:00", "2017-01-04T16:08:00-05:00", "--Redacted--: nope - barnett", "Page 78", EVENT_TYPE_FBI )
 
+  # Page 77
   strzok_to_page(child_file, "2017-01-04T14:19:00-05:00", "Razor still open. :@ but serendipitously good, I guess. You want those chips and oreos ?")
   page_to_strzok(child_file, "2017-01-04T14:19:30-05:00", "phew.")
   page_to_strzok(child_file, "2017-01-04T14:20:00-05:00", "But yeah, that's amazing that he is still open. Good, I guess." )
@@ -2193,7 +2117,7 @@ def add_miscellaneous(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_event(child_file, "2016-07-11T12:00:00-05:00", "2016-07-11T12:05:00-05:00", "Stefan Halper (FBI) meets Carter Page", "At University of Cambridge https://dailycaller.com/2019/05/03/azra-turk-cia-fbi-papadopoulos/", EVENT_TYPE_FBI )
   add_event(child_file, "2016-03-14T12:00:00-05:00", "2016-03-14T12:05:00-05:00", "John Brennan (CIA) travels to Moscow", "Meets with Federal Security Service (KGB) https://www.breitbart.com/national-security/2016/03/29/russians-claim-cia-chief-john-brennan-made-secret-trip-to-moscow/", EVENT_TYPE_CIA )
   add_event(child_file, "2017-01-05T13:00:00-05:00", "2017-01-05T14:00:00-05:00", "Comey (FBI) Briefs Obama and Susan Rice (NSC)", "About the status of the Russia investigation. https://www.scribd.com/document/371379264/2018-02-08-CEG-LG-to-Rice-Russia-Investigation-Email#from_embed", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-20T12:15:32-05:00", "2017-01-20T12:15:33-05:00", "Susan Rice (NSC) documents Jan 5 meeting as 'by the book'", "Rice stresses that Obama said 'by the book' but everyone else in the meeting noted it as 'the right people working on this' https://www.scribd.com/document/371379264/2018-02-08-CEG-LG-to-Rice-Russia-Investigation-Email#from_embed", EVENT_TYPE_RICE )
+  add_event(child_file, "2017-01-20T12:15:32-05:00", "2017-01-20T12:15:33-05:00", "Susan Rice (NSC) documents Jan 5 meeting as 'by the book'", "Written on the orders of Neil Eggleston. Rice stresses that Obama said 'by the book' but everyone else in the meeting noted it as 'the right people working on this' https://www.scribd.com/document/371379264/2018-02-08-CEG-LG-to-Rice-Russia-Investigation-Email#from_embed", EVENT_TYPE_RICE )
   add_event(child_file, "2016-12-15T12:00:00-05:00", "2016-12-15T12:00:00-05:00", "UAE Crown Prince Sheikh Mohammed bin Zayed al-Nahyan meets Trump Transition Team", "https://www.cnn.com/2017/09/13/politics/susan-rice-house-investigators-unmasked-trump-officials/", EVENT_TYPE_CAMPAIGN )
   add_event(child_file, "2017-03-22T12:00:00-05:00", "2017-03-22T12:00:00-05:00", "Susan Rice lies on PBS Newshour", "Nothing of the sort occurred. I know nothing about (incidental intercept of Trump and associates) https://www.pbs.org/newshour/nation/susan-rice-trumps-wiretapping-claim-nothing-sort-occurred", EVENT_TYPE_RICE )
   add_event(child_file, "2017-04-17T13:08:00-05:00", "2017-04-17T13:08:00-05:00", "Susan Rice admits unmasking", "https://www.nbcnews.com/politics/politics-news/susan-rice-speaks-out-unmasking-accusations-i-leaked-nothing-nobody-n742486", EVENT_TYPE_RICE )
@@ -2663,6 +2587,26 @@ def add_fbi_ig_report_fisa(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_event( child_file, "2016-08-02T12:00:00-05:00", "2016-08-02T12:00:00-05:00", "Strzok informed of FBI field agent reported contact by Simpson", "Probably Gaeta, he had been contacted by former CHS that Simpson's firm hired to investigate Trump's long standing relationship with Russia. Crossfire Hurricane team. FBI IG Report page 98, Footnote 223", EVENT_TYPE_FBI )
   add_event( child_file, "2016-10-07T12:00:00-05:00", "2016-10-07T12:00:00-05:00", "Case Agent 2 tells Steele about Papadopoulos, Flynn, Carter Page and Manafort investigations", "In a European city, probably London, Crossfire Hurricane team arrived the morning of this meeting. FBI IG Report page 109, Also SSCI Volume 5 page 911 shows date as single digit we assume 7th because it is a Friday. All Steele reports after this mentions one of these people", EVENT_TYPE_FBI )
 
+  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Crossfire Dragon (Page Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Crossfire Fury (Manafort Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Crossfire Typhoon (Papadopoulos Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-08-16T12:00:00-05:00", "2016-08-16T12:00:00-05:00", "FBI opens Crossfire Razor (Flynn Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-08-10T12:00:00-04:00", "2016-08-10T12:00:00-05:00", "FBI opens Foreign Agents Registration Act (FARA) case on Papadopoulos (Crossfire Typhoon)", "FBI IG Report page 59", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-08-10T12:00:00-04:00", "2016-08-10T12:00:00-04:00", "FBI opens Foreign Agents Registration Act (FARA) case on Paul Manafort (Crossfire Fury)", "FBI IG Report page 59", EVENT_TYPE_FBI )
+
+  add_event( child_file, "2017-01-12T12:00:00-05:00", "2017-01-12T12:05:00-05:00", "FISA warrant renewed on Carter Page", "Docket 2017-0052 FBI IG Report Executive Summary page VI, Page 209 (PDF page 248), Signed by Judge Michael W. Mosman", EVENT_TYPE_FISA )
+  add_event( child_file, "2017-04-07T12:00:00-05:00", "2017-04-07T12:05:00-05:00", "FISA warrant renewed on Carter Page", "Docket 2017-0375 FBI IG Report Executive Summary page VI", EVENT_TYPE_FISA )
+  add_event( child_file, "2017-06-29T12:00:00-05:00", "2017-06-29T12:05:00-05:00", "FISA warrant renewed on Carter Page", "Docket 2017-0679 FBI IG Report Executive Summary page VI", EVENT_TYPE_FISA )
+  # add_event( child_file, "2016-10-21T12:00:00-05:00", "2017-09-21T12:00:00-05:00", "Carter Page under FISA surveillance", "FBI IG Report Executive Summary page VI", EVENT_TYPE_FISA )
+  add_event( child_file, "2016-08-10T12:00:00-05:00", "2016-08-10T12:00:00-05:00", "FBI opens Foreign Agents Registration Act (FARA) case on Carter Page (Crossfire Dragon)", "FBI IG Report page 59", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-08-17T12:00:00-05:00", "2016-08-17T12:00:00-05:00", "CIA tells Crossfire Hurricane that Carter Page was an asset for five years", "FBI IG Report page 79, notification known as August 17 Memorandum", EVENT_TYPE_CIA )
+  add_event( child_file, "2016-08-20T12:00:00-05:00", "2016-08-20T12:00:00-05:00", "FBI CHS operation 1 - Carter Page", "FBI IG Report page 317", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-10-17T12:00:00-05:00", "2016-10-17T12:00:00-05:00", "FBI CHS operation 1 Part 2 - Carter Page", "FBI IG Report page 320", EVENT_TYPE_FBI )
+  add_event( child_file, "2016-12-15T12:00:00-05:00", "2016-12-15T12:00:00-05:00", "FBI CHS operation 1 Part 3 - Carter Page", "FBI IG Report page 323", EVENT_TYPE_FBI )
+  add_event( child_file, "2017-01-25T12:00:00-05:00", "2017-01-25T12:00:00-05:00", "FBI CHS operation 1 Part 4 - Carter Page asked if he knew Flynn", "FBI IG Report page 325", EVENT_TYPE_FBI )
+  add_event( child_file, "2017-07-13T12:00:00-05:00", "2017-07-13T12:00:00-05:00", "Carter Page Physical Search", "Photos from search uploaded to FBI server did not follow Standard Minimization Procedures (SMP). FISA Footnotes - Page 231 (PDF Page 270) Note 379", EVENT_TYPE_FBI )
+  add_event( child_file, "2017-07-29T12:00:00-05:00", "2017-07-29T12:00:00-05:00", "Carter Page Physical Search", "Photos from search uploaded to FBI server did not follow Standard Minimization Procedures (SMP). FISA Footnotes - Page 231 (PDF Page 270) Note 379", EVENT_TYPE_FBI )
+
   return None
 
 def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
@@ -2695,6 +2639,11 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   add_name_and_email( child_file, "Peter P. Strzok II", "ppstrzok@fbi.sgov.gov" )
   add_name_and_email( child_file, "Susan E. Rice", "SRice@nsc.eop.ic.gov" )
 
+  # Not from this file
+  add_name_and_email( child_file, "George Toscas", "George.Toscas2@usdoj.gov" )
+  add_name_and_email( child_file, "George Toscas", "gtoscas@jmd.usdoj.gov" )
+  add_name_and_email( child_file, "David Laufman", "dlaufman@jmd.usdoj.gov" )
+  
   # Page 3
   # INBOX is page to Strozk
   # OUTBOX is strozk to page
@@ -3654,7 +3603,8 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   # Page 9, Outgoing is To Lisa Page, Incoming is From Lisa Page
   strzok_to_page(child_file, "2017-02-27T19:46:37-05:00", "A) great! That's soooo much better than walking. She bus back, or walk to Union Station?\nB) is it really?!? I didnt realize that either.\U0001f636\nC) Bill talked to Andy about the recent stuff we pulled, which led to follow up discussion between he and I on what I shared with you. He wants to take it up with me to Andy some night after wrap. So obviously I'll make sure you're there. :)\n\nAnd I can't email it because apparently screws up a lot of IT stuff since it's internal. Will explain more if you want. Regardless, will get hard copies.")
   strzok_to_page(child_file, "2017-02-27T21:31:00-05:00", "WH at 10, and still need to prep for it. Got comme")
-  strzok_to_page(child_file, "2017-02-27T21:35:00-05:00", "Oh, and I've talked to GZT twice tonight. Apparent")
+  m = strzok_to_page(child_file, "2017-02-27T21:35:00-05:00", "Oh, and I've talked to GZT twice tonight. Apparent")
+  m.addnote("GZT - George Z. Toscas National Security Division")
   page_to_strzok(child_file, "2017-02-27T21:37:00-05:00", "--Redacted-- Okey doke.")
   # Complete version in lync_text_messages_of_peter_strzok_from_2-13-16_to_12-6-17.pdf
   # strzok_to_page(child_file, "2017-02-27T21:37:00-05:00", "BUT WE DON'T GET THE URGENCY, LIS!!!! WE MAY NEVER")
@@ -10062,6 +10012,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.id = "00238955-133D-D2C1-A9E9-ADFF27FA80F4"
   s.name = "Andrew G. McCabe"
   s.description = "Deputy Director (DD) FBI"
+  s.custom = "Wife Jill received $467,500 from June-Oct 2015 from Terry McAuliffe" 
   s.birthday = datetime.fromisoformat("1968-03-18T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Andrew McCabe.png")
   s.save()
@@ -10100,6 +10051,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.birthday = datetime.fromisoformat("1964-12-01T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Kramer.png")
   s.save()
+  s.tag("Leaker", "Leaked Steele Dossier to Buzzfeed", truxton.TAG_ORIGIN_HUMAN)
 
   s = t.newsubject()
   s.id = "00738955-133D-D2C1-A9E9-ADFF27FA80F4"
@@ -10155,7 +10107,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.name = "John P. Carlin"
   s.description = "Assistant Attorney General"
   s.custom = "Head of the Department of Justice's National Security Division (NSD)"
-  s.birthday = datetime.fromisoformat("1907-01-01T00:00:00-00:00")
+  s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/John Carlin.png")
   s.save()
 
@@ -10165,7 +10117,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   # https://public.substack.com/p/cia-had-foreign-allies-spy-on-trump
   s.description = "Probable MI6 Asset. Page 312 of FBI FISA IG Report states 'no evidence Mifsud has ever acted as an FBI CHS'"
   s.custom = "Told Papadapolous about Clinton email before Papadapolous met Alexander Downer"
-  s.birthday = datetime.fromisoformat("1960-01-01T00:00:00-00:00")
+  s.birthday = datetime.fromisoformat("1960-04-01T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Joseph Mifsud.png")
   s.save()
 
@@ -10192,7 +10144,6 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.name = "Michael Gaeta"
   s.description = "Assistant FBI Legal Attaché (legat) in Rome, aka 'Handling Agent 1' in FBI IG Report"
   s.custom = "Former member of the FBI's Eurasian Organized Crime unit, Steele's handler, possibly Mifsud's handler"
-  #s.birthday = datetime.fromisoformat("1980-08-02T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Gaeta.png")
   s.save()
 
@@ -10278,9 +10229,11 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.id = "02638955-133D-D2C1-A9E9-ADFF27FA80F4"
   s.name = "James Clapper"
   s.description = "Director National Intelligence (DNI)"
+  s.custom = "Leaked Flynn story to WP reporter David Ignatius"
   s.birthday = datetime.fromisoformat("1941-03-14T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Clapper.png")
   s.save()
+  s.tag("Leaker", "Leaked Flynn story to WP reporter David Ignatius", truxton.TAG_ORIGIN_HUMAN)
 
   s = t.newsubject()
   s.id = "02786B2F-A5E1-37E8-B7E4-C6B9D30E8623"
@@ -10294,7 +10247,6 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.id = "08886B2F-A5E1-37E8-B7E4-C6B9D30E8623"
   s.name = "Olga Galkina"
   s.description = "Igor Danchenko's primary source. Aka Source 3 in February 9, 2017 Electronic Communication.pdf"
-  # s.birthday = datetime.fromisoformat("1978-05-05T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Olga Galkina.png")
 
   s = t.newsubject()
@@ -10409,7 +10361,8 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.id = "394AD0B8-7E59-70DB-9991-1D44CF993510"
   s.name = "David L. Bowdich"
   s.description = "Deputy Director FBI, as of February 2021 he is Chief Security Officer of Disney"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Bowdich.jpg")
+  s.birthday = datetime.fromisoformat("1969-03-14T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Bowdich.png")
   s.save()
 
   s = t.newsubject()
@@ -10418,6 +10371,15 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.description = "Assistant Directory for Public Affairs FBI, resigned 15 Feb 2018 for accepting tickets to Nationals baseball game in May of 2016 (bribes)"
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Kortan.png")
   s.save()
+
+  s = t.newsubject()
+  s.id = "4D58E666-3758-C6EB-A7B4-EA56F06E7D04"
+  s.name = "James Brien Comey"
+  s.description = "Director FBI"
+  s.birthday = datetime.fromisoformat("1960-12-14T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Comey.png")
+  s.save()
+  s.tag("Leaker", "Leaked notes to Daniel Richman to pass to NY Times", truxton.TAG_ORIGIN_HUMAN)
 
   print("The subjects of the investigation (aka suspects/players/persons of interest) created")
   return None
@@ -10435,14 +10397,16 @@ def create_tags(t: truxton.TruxtonObject) -> None:
   t.createtag("FD-1087", "FBI Collected Item Log")
   t.createtag("FISA Abuse", "Things related to FISA abuse")
   t.createtag("Hatred", "Expression of hatred of Trump")
+  t.createtag("iMessage", "Use of Apple iMessage for off the record conversations")
   t.createtag("Leak", "Information leaked to the press")
+  t.createtag("Leaker", "This person leaked information to the press")
   t.createtag("Memo", "This item is part of a memo")
   t.createtag("Midyear Exam", "FBI's investigation of Hillary Clinton Email Server")
   t.createtag("News Article", "This items is part of a news article")
   t.createtag("Steele Report", "Information about the Steele Report")
   t.createtag("Testimony", "This is part of testimony")
+  t.createtag("Text Messages", "This file contains text messages")
   t.createtag("Unhappy", "All is not well in Hurricane-ville")
-  t.createtag("iMessage", "Use of Apple iMessage for off the record conversations")
   print("Created Tags")
   return None
 
