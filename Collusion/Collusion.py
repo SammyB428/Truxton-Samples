@@ -9,8 +9,8 @@ from calendar import timegm
 from pathlib import Path
 from inspect import currentframe, getframeinfo
 
-#sys.path.append('C:/Program Files/Truxton/SDK')
-sys.path.append('C:/Users/Sam/Documents/GitHub/Truxton/Libraries/Python/PyTrux/x64/Debug')
+sys.path.append('C:/Program Files/Truxton/SDK')
+#sys.path.append('C:/Users/Sam/Documents/GitHub/Truxton/Libraries/Python/PyTrux/x64/Debug')
 import truxton
 
 # https://www.scribd.com/document/377540616/PS-LP-Text-Messages-Dec-2016-May-2017#from_embed
