@@ -46,6 +46,14 @@ strzok_page_associations_were_made = False
 Investigation = None
 FBI_GROUP = None
 CROSSFIRE_HURRICANE_TEAM = None
+SUBJECT_ID_STRZOK      = "01738955-133D-D2C1-A9E9-ADFF27FA80F4"
+SUBJECT_ID_PAGE        = "01538955-133D-D2C1-A9E9-ADFF27FA80F4"
+SUBJECT_ID_PIENTKA     = "02886B2F-A5E1-37E8-B7E4-C6B9D30E8623"
+SUBJECT_ID_RICE        = "02438955-133D-D2C1-A9E9-ADFF27FA80F4"
+SUBJECT_ID_JAMES_BAKER = "03386B2F-A5E1-37E8-B7E4-C6B9D30E8623"
+SUBJECT_ID_AUTEN       = "5BBCCB7C-2231-BA83-20D9-06F0401375C6"
+SUBJECT_ID_DOLAN       = "880CA7DF-334D-402A-B3CF-7CDE15EED8BE"
+SUBJECT_ID_SUSSMAN     = "03486B2F-A5E1-37E8-B7E4-C6B9D30E8623"
 
 def main() -> None:
   head_and_tail = os.path.split(os.path.realpath(__file__))
@@ -269,6 +277,21 @@ def add_exhibit5(parent_file: truxton.TruxtonChildFileIO) -> None:
 
   add_event(child_file, "2017-01-24T16:00:00-05:00", "2017-01-24T16:00:00-05:00", "Peter Strzok (FBI) and Joe Pientka (FBI) draft 302 about Flynn interview", "Comey testimony to HPSCI on March 2, 2017 page 9-10", EVENT_TYPE_FBI )
 
+  # PDF Page 44
+  strzok_to_page(child_file, "2016-07-20T00:14:42-04:00", "Blech eating late.")
+  page_to_strzok(child_file, "2016-07-20T01:14:54-04:00", "Omg you need to read the top four most popular on nyt right now. Kinda makes you feel like this is all a bad dream?...")
+  strzok_to_page(child_file, "2016-07-25T00:58:22-04:00", "Hell, look at the top 6. I think the downfall of Rome wad like this...")
+
+  # PDF Page 45
+  page_to_strzok(child_file, "2016-07-25T00:50:43-04:00", "I just did. She confirmed I hadn't. So either in told you or wanted to tell you and hadn't. She brought up a good point about being circumspect in talking to him in terms of not placing him into a situation where he'd have to recuse himself.")
+
+  # PDF Page 48
+  # PS-incoming Page->Strzok, PS-Outgoing Strzok->Page
+  strzok_to_page(child_file, "2017-02-10T18:02:42-05:00", "Hey I was considering what you said, please just drop off what you have, I will incorporate it tonight/tomorrow and email back out to you. Thanks for your time on it.")
+  page_to_strzok(child_file, "2017-02-10T19:09:00-05:00", "It's fine. Unrelated, but you need to finalize that asap. I wouldn't be surprised if following this evening's events that a request comes in to see it.")
+  strzok_to_page(child_file, "2017-02-10T19:11:00-05:00", "A) I don't believe you. And I love you. B) thank yiu. I'm going back in tonight to do so")
+  m = strzok_to_page(child_file, "2017-02-10T22:36:51-05:00", "I made your edits, and sent them to Joe I also emailed you an updated 302. I'm not asking you to edit it this weekend, I just wanted to send it to you.")
+  m.addnote("Joe - Joe Pientka?")
   return None
 
 def add_danchenko_files(parent_file: truxton.TruxtonChildFileIO) -> None:
@@ -557,7 +580,7 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   page_to_strzok(child_file, "2017-01-04T01:27:23-00:00", "I wrote you back. Glad you talked with bill. About case stuff or other?")
   strzok_to_page(child_file, "2017-01-04T01:27:55-00:00", "Ha. Literally just pulled this out")
   m = strzok_to_page(child_file, "2017-01-04T01:29:55-00:00", "He, like us, is concerned with over sharing. Doesn't want Clapper giving CR cuts to WH. All political, just shows our hand and potentially makes enemies.")
-  m.addnote("CR - Crossfire Razor - Cover term for Flynn investigation")
+  m.addnote("CR - Crossfire Razor - Cover term for Flynn investigation, cuts - seems to be the lingo for audio/phone transcripts")
   page_to_strzok(child_file, "2017-01-04T01:50:12-00:00", "Did the D have thoughts about your attendance Friday?")
   strzok_to_page(child_file, "2017-01-04T02:26:42-00:00", "He supports it. We will tell the rest of them tomorrow and if they don't have strong opposition I expect I will go.")
   page_to_strzok(child_file, "2017-01-04T02:27:09-00:00", "Lucky ducky!")
@@ -779,8 +802,8 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2017-02-10T19:57:02-00:00", "Yes")
   strzok_to_page(child_file, "2017-02-10T19:57:15-00:00", "Talk?")
   page_to_strzok(child_file, "2017-02-10T21:09:12-00:00", "You free?")
-  strzok_to_page(child_file, "2017-02-10T23:02:42-00:00", "Hey I was considering what you said, please just drop off what you have, I will incorporate it tonight/tomorrow and email back out to you. Thanks for your time on it.")
-  page_to_strzok(child_file, "2017-02-11T00:09:30-00:00", "It's fine. Unrelated, but you need to finalize that asap. I wouldn't be surprised if following this evening's events that a request comes in to see it.")
+  #strzok_to_page(child_file, "2017-02-10T23:02:42-00:00", "Hey I was considering what you said, please just drop off what you have, I will incorporate it tonight/tomorrow and email back out to you. Thanks for your time on it.")
+  #page_to_strzok(child_file, "2017-02-11T00:09:30-00:00", "It's fine. Unrelated, but you need to finalize that asap. I wouldn't be surprised if following this evening's events that a request comes in to see it.")
 
   # Page 42, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
   page_to_strzok(child_file, "2017-02-11T00:12:25-00:00", "I gave my edits to Bill to put on your desk.")
@@ -789,7 +812,7 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   page_to_strzok(child_file, "2017-02-11T03:32:50-00:00", "Yes, it's no problem. You can say I emailed you to tell you I left them with him.")
   page_to_strzok(child_file, "2017-02-11T03:33:25-00:00", "I'm sorry. That's certainly not what I want. Why so awful?")
   strzok_to_page(child_file, "2017-02-11T03:35:56-00:00", "Long story, I'll tell you later. Or write in an email. Bottom line, I couldn't keep the phone away, between Snowden, and Assange, and Flynn. Just a little bit going on literally got emails about all of them during dinner. All of them needing attention")
-  strzok_to_page(child_file, "2017-02-11T03:36:51-00:00", "I made your edits, and sent them to --Redacted-- I also emailed you an updated 302. I'm not asking you to edit it this weekend, I just wanted to send it to you.")
+  #strzok_to_page(child_file, "2017-02-11T03:36:51-00:00", "I made your edits, and sent them to --Redacted-- I also emailed you an updated 302. I'm not asking you to edit it this weekend, I just wanted to send it to you.")
   strzok_to_page(child_file, "2017-02-11T03:37:19-00:00", "And hopefully it doesn't need much more editing. I will polish it this weekend, and have it ready for Monday. I really appreciate you time and edits.")
   strzok_to_page(child_file, "2017-02-11T03:37:45-00:00", "Bill and I will talk tomorrow morning. If you have time, I'd love to compare notes about what you heard")
   page_to_strzok(child_file, "2017-02-11T03:40:46-00:00", "Yup, we can try to figure out a time.")
@@ -1970,42 +1993,45 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   m.addnote("McCord upset that Pence lied. Said Flynn didn't discuss sanctions.")
   add_event(child_file, "2017-01-19T12:00:00-05:00", "2017-01-19T12:00:00-05:00", "Comey visiting ODNI (Clapper and Brennan believed to be present)", "Page 35", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-24T12:00:00-05:00", "2017-01-24T12:00:00-05:00", "Yates calls Comey to force him to tell White House of Flynn investigation, Comey tells her he was interviewed that day. Yates dumbfounded.", "Page 35", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:11:00-05:00", "2017-01-04T14:11:00-05:00", "From Strzok: Hey if you havent closed --Redacted-- don't do it yet", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:12:00-05:00", "2017-01-04T14:12:00-05:00", "From Strzok: Sorry, RAZOR", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:14:00-05:00", "2017-01-04T14:14:00-05:00", "From Strzok: Hey if you havent closed RAZOR, don't do so yet", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:15:00-05:00", "2017-01-04T14:15:00-05:00", "To Strzok: Okay", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:15:01-05:00", "2017-01-04T14:15:01-05:00", "From Strzok: Still open right?", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:15:02-05:00", "2017-01-04T14:15:02-05:00", "From Strzok: And youre case agent? Going to send you [RADACTED] for the file", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:15:03-05:00", "2017-01-04T14:15:03-05:00", "To Strzok: I have not closed it, I'll double check to see if --Redacted-- had done it.", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:17:00-05:00", "2017-01-04T14:17:00-05:00", "To Strzok: Still open and I'm still listed as the Case Manager (had to double check)", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:18:00-05:00", "2017-01-04T14:18:00-05:00", "From Strzok: Rgr. I couldn't raise --Redacted-- earlier. Pls keep it open for now", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:18:01-05:00", "2017-01-04T14:18:01-05:00", "To Strzok: Will do", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:19:00-05:00", "2017-01-04T14:19:00-05:00", "Strzok to Page: Razor still open", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:21:00-05:00", "2017-01-04T14:21:00-05:00", "To Strzok: Anything I can help with?", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:22:00-05:00", "2017-01-04T14:22:00-05:00", "From Strzok: Just need to relay to him not to close RAZOR yet. I talked with --Redacted--", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:22:15-05:00", "2017-01-04T14:22:15-05:00", "To Strzok: Oh, OK", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:22:30-05:00", "2017-01-04T14:22:30-05:00", "To Strzok: What's up?", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:22:45-05:00", "2017-01-04T14:22:45-05:00", "From Strzok: Need to decide what to do with him w/r/t the --Redacted--", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:22:50-05:00", "2017-01-04T14:22:50-05:00", "From Strzok: 7th floor involved.", "Page 77", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:23:00-05:00", "2017-01-04T14:23:00-05:00", "To Strzok: I heard that might be the case yesterday. Did DD send that material over?", "Page 77. NOTE: Jan 3 was when Clapper learned of Flynn-Kislyak phone call.", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:23:10-05:00", "2017-01-04T14:23:10-05:00", "To Strzok: --Redacted-- has been handling RAZOR's closure -- do you want me to reach out to him?", "Page 77.", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:24:00-05:00", "2017-01-04T14:24:00-05:00", "From Strzok: Yes", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:24:10-05:00", "2017-01-04T14:24:10-05:00", "To Strzok: Will do", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:24:20-05:00", "2017-01-04T14:24:20-05:00", "From Strzok: Hey don't close RAZOR", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:24:30-05:00", "2017-01-04T14:24:30-05:00", "From Strzok: actually, just got him on Lync", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:24:40-05:00", "2017-01-04T14:24:40-05:00", "From Strzok: Has he been doing the bulk of the work on him?>", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:25:00-05:00", "2017-01-04T14:25:00-05:00", "To Strzok: He's been doing the some of the stuff more recently", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:25:10-05:00", "2017-01-04T14:25:10-05:00", "From Strzok: Actually, his green bubble just turned yellow, pls do try and reach him", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T14:25:20-05:00", "2017-01-04T14:25:20-05:00", "To Strzok: Will do", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T15:59:00-05:00", "2017-01-04T15:59:00-05:00", "--Redacted--: have you seen the latest --Redacted--?", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T15:59:05-05:00", "2017-01-04T15:59:05-05:00", "--Redacted--: on the yellow side? yes ... --Redacted--?", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T15:59:10-05:00", "2017-01-04T15:59:10-05:00", "--Redacted--: to give you a thumb nail i heard pete say, 'Andy and Bill will interview...'", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T15:59:20-05:00", "2017-01-04T15:59:20-05:00", "--Redacted--: yep", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T15:59:30-05:00", "2017-01-04T15:59:30-05:00", "--Redacted--: lemme get more clarity before i give you more", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T16:00:00-05:00", "2017-01-04T16:00:00-05:00", "--Redacted--: Bill meaning Preistep, correct?", "Page 78", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-04T16:08:00-05:00", "2017-01-04T16:08:00-05:00", "--Redacted--: nope - barnett", "Page 78", EVENT_TYPE_FBI )
-
   # Page 77
+  strzok_to_unknown(child_file, "2017-01-04T14:11:00-05:00", "Hey if you havent closed --Redacted-- don't do it yet" )
+  strzok_to_unknown(child_file, "2017-01-04T14:12:00-05:00", "Sorry, RAZOR" )
+  m = strzok_to_unknown(child_file, "2017-01-04T14:14:00-05:00", "Hey if you havent closed RAZOR, don't do so yet" )
+  m.tag("Crossfire Razor", "Strzok prevents official closing of the case", truxton.TAG_ORIGIN_HUMAN)
+  unknown_to_strzok(child_file, "2017-01-04T14:15:00-05:00", "Okay" )
+  strzok_to_unknown(child_file, "2017-01-04T14:15:01-05:00", "Still open right?" )
+  strzok_to_unknown(child_file, "2017-01-04T14:15:02-05:00", "And youre case agent? Going to send you [RADACTED] for the file" )
+  unknown_to_strzok(child_file, "2017-01-04T14:15:03-05:00", "I have not closed it, I'll double check to see if --Redacted-- had done it." )
+  unknown_to_strzok(child_file, "2017-01-04T14:17:00-05:00", "Still open and I'm still listed as the Case Manager (had to double check)" )
+  strzok_to_unknown(child_file, "2017-01-04T14:18:00-05:00", "Rgr. I couldn't raise --Redacted-- earlier. Pls keep it open for now" )
+  unknown_to_strzok(child_file, "2017-01-04T14:18:01-05:00", "Will do" )
+  #add_event(child_file, "2017-01-04T14:19:00-05:00", "2017-01-04T14:19:00-05:00", "Strzok to Page: Razor still open", "Page 77", EVENT_TYPE_FBI )
+  unknown_to_strzok(child_file, "2017-01-04T14:21:00-05:00", "Anything I can help with?" )
+  strzok_to_unknown(child_file, "2017-01-04T14:22:00-05:00", "Just need to relay to him not to close RAZOR yet. I talked with --Redacted--" )
+  unknown_to_strzok(child_file, "2017-01-04T14:22:15-05:00", "Oh, OK" )
+  unknown_to_strzok(child_file, "2017-01-04T14:22:30-05:00", "What's up?" )
+  strzok_to_unknown(child_file, "2017-01-04T14:22:45-05:00", "Need to decide what to do with him w/r/t the --Redacted--" )
+  strzok_to_unknown(child_file, "2017-01-04T14:22:50-05:00", "7th floor involved." )
+  m = unknown_to_strzok(child_file, "2017-01-04T14:23:00-05:00", "I heard that might be the case yesterday. Did DD send that material over?" )
+  m.addnote("Jan 3 was when Clapper learned of Flynn-Kislyak phone call")
+  unknown_to_strzok(child_file, "2017-01-04T14:23:10-05:00", "--Redacted-- has been handling RAZOR's closure -- do you want me to reach out to him?" )
+  strzok_to_unknown(child_file, "2017-01-04T14:24:00-05:00", "Yes" )
+  unknown_to_strzok(child_file, "2017-01-04T14:24:10-05:00", "Will do" )
+  strzok_to_unknown(child_file, "2017-01-04T14:24:20-05:00", "Hey don't close RAZOR" )
+  strzok_to_unknown(child_file, "2017-01-04T14:24:30-05:00", "actually, just got him on Lync" )
+  strzok_to_unknown(child_file, "2017-01-04T14:24:40-05:00", "Has he been doing the bulk of the work on him?>" )
+  unknown_to_strzok(child_file, "2017-01-04T14:25:00-05:00", "He's been doing the some of the stuff more recently" )
+  strzok_to_unknown(child_file, "2017-01-04T14:25:10-05:00", "Actually, his green bubble just turned yellow, pls do try and reach him" )
+  unknown_to_strzok(child_file, "2017-01-04T14:25:20-05:00", "Will do" )
+  fbi_analysis_chat(child_file, "2017-01-04T15:59:00-05:00", "have you seen the latest --Redacted--?" )
+  fbi_analysis_chat(child_file, "2017-01-04T15:59:05-05:00", "on the yellow side? yes ... --Redacted--?" )
+  fbi_analysis_chat(child_file, "2017-01-04T15:59:10-05:00", "to give you a thumb nail i heard pete say, \"Andy and Bill will interview...\"" )
+  fbi_analysis_chat(child_file, "2017-01-04T15:59:20-05:00", "yep" )
+  fbi_analysis_chat(child_file, "2017-01-04T15:59:30-05:00", "lemme get more clarity before i give you more" )
+  fbi_analysis_chat(child_file, "2017-01-04T16:00:00-05:00", "Bill meaning Preistep, correct?" )
+  fbi_analysis_chat(child_file, "2017-01-04T16:08:00-05:00", "nope - barnett" )
+
+  # Page 78
   strzok_to_page(child_file, "2017-01-04T14:19:00-05:00", "Razor still open. :@ but serendipitously good, I guess. You want those chips and oreos ?")
   page_to_strzok(child_file, "2017-01-04T14:19:30-05:00", "phew.")
   page_to_strzok(child_file, "2017-01-04T14:20:00-05:00", "But yeah, that's amazing that he is still open. Good, I guess." )
@@ -2014,7 +2040,19 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   #strzok_to_page(child_file, "2017-01-23T06:37:20-05:00", "with Andy. Bill sense with it and he wanted to know why we had to go aggressively doing these things, openly. I worry Bill isn't getting the underlying")
   #strzok_to_page(child_file, "2017-01-23T06:37:40-05:00", "distinction that I think is clear. But maybe I'm wrong.")
 
-  # Left off here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # Page 79
+  m = strzok_to_unknown(child_file, "2017-01-24T06:46:00-05:00", "Hi - sorry I missed you yesterday. About to email you questions for Andy to think about in advance of his call with Flynn. I'm sure he's thought of them already, but just in case" )
+  m.addnote("There's an email on page 88 that contains these questions. Addressee is completely redacted.")
+  page_to_strzok(child_file, "2017-02-10T17:37:00-05:00", "This document pisses me off.? You didn't even attempt to make it cogent and readable.? This is lazy work on you part." )
+  strzok_to_page(child_file, "2017-02-10T22:10:00-05:00", "Lisa, you didnt see it before my edits that went into what I sent you. I was 1) trying to completely re-write the thing so as to save --Redacted-- voice and 2) get it out to you for general review and comment in anticipation of needing it soon. I greatly appreciate your time in reviewing and your edits. I incorporated them. Thank you.")
+  strzok_to_page(child_file, "2017-02-10T22:11:00-05:00", "shoudl say 1) trying to not completely re-write....")
+  # Adding one second to the timestamp to preserve order
+  strzok_to_page(child_file, "2017-02-10T22:11:01-05:00", "should")
+  strzok_to_page(child_file, "2017-02-10T22:11:02-05:00", "f*ck.")
+  strzok_to_page(child_file, "2017-02-10T22:11:03-05:00", "I did the edits better than I'm IMing")
+
+
+
   add_event(child_file, "2017-01-24T12:35:00-05:00", "2017-01-24T12:35:00-05:00", "Flynn calls McCabe", "Exhibit 11 Page 94", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-24T12:30:00-05:00", "2017-01-24T12:30:00-05:00", "McCabe calls Flynn", "Exhibit 13 Page 105", EVENT_TYPE_FBI )
   return None
@@ -2144,29 +2182,21 @@ def add_miscellaneous(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_event(child_file, "2016-10-28T12:00:00-05:00", "2016-10-28T12:05:00-05:00", "Comey (FBI) tells Congress they will look at 141,000 Clinton emails on Weiner laptop", "https://www.factcheck.org/2018/08/clintons-emails-weiners-laptop-and-a-falsehood/", EVENT_TYPE_FBI )
   add_event(child_file, "2016-10-30T12:00:00-05:00", "2016-10-30T12:05:00-05:00", "FBI gets warrant to look at 141,000 Clinton emails on Weiner laptop", "https://www.factcheck.org/2018/08/clintons-emails-weiners-laptop-and-a-falsehood/", EVENT_TYPE_FBI )
   add_event(child_file, "2016-11-06T12:00:00-05:00", "2016-11-06T12:05:00-05:00", "Comey (FBI) finds nothing new in 141,000 Clinton emails on Weiner laptop", "https://www.factcheck.org/2018/08/clintons-emails-weiners-laptop-and-a-falsehood/", EVENT_TYPE_FBI )
-  add_event(child_file, "2015-12-28T19:18:32-05:00", "2015-12-28T19:18:32-05:00", "Page to Strozk - You get all your OCONUS lures approved? ;)", "OIG version", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
-  add_event(child_file, "2015-12-28T19:19:41-05:00", "2015-12-28T19:19:41-05:00", "Strozk to Page - No, it's just implicated a much bigger policy issue I'll explain XXX Might even be able to use it as a pretext for a call... :)", "OIG version", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
+  #add_event(child_file, "2015-12-28T19:18:32-05:00", "2015-12-28T19:18:32-05:00", "Page to Strozk - You get all your OCONUS lures approved? ;)", "OIG version", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
+  #add_event(child_file, "2015-12-28T19:19:41-05:00", "2015-12-28T19:19:41-05:00", "Strozk to Page - No, it's just implicated a much bigger policy issue I'll explain XXX Might even be able to use it as a pretext for a call... :)", "OIG version", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
   add_event(child_file, "2016-10-31T13:05:00-04:00", "2016-10-31T17:27:00-04:00", "Jeffery Wiseman (FBI CHS) recorded conversation with Papadopoulos (Crossfire Typhoon)", "transcript reads like they were at a casino, Wiseman identified in https://twitter.com/CasualSemi/status/1248350370985906176", EVENT_TYPE_FBI )
   add_event(child_file, "2016-11-18T09:00:00-05:00", "2016-11-18T09:00:00-05:00", "Steele's Delta File accessed by Crossfire Hurricane Team", "Grassley", EVENT_TYPE_FBI )
   add_event(child_file, "2016-12-06T09:00:00-05:00", "2016-12-06T09:00:00-05:00", "Obama orders Intelligence Community Assessment (ICA) about Russian involvement in election", "Lee Smith, The Plot against the President, page 106", EVENT_TYPE_CIA )
   add_event(child_file, "2016-12-09T09:00:00-05:00", "2016-12-09T09:00:00-05:00", "Washington Post reports ICA leaked Putin-helps-Trump meme", "Lee Smith, The Plot against the President, page 106", EVENT_TYPE_CIA )
   e = add_event(child_file, "2017-01-04T13:49:46-05:00", "2017-01-04T13:49:46-05:00", "FBI closes Crossfire Razor (Flynn) case due to no evidence", "https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_FBI )
   e.tag("Crossfire Razor", "Case dropped, no evidence of any wrong doing", truxton.TAG_ORIGIN_HUMAN)
-  add_event(child_file, "2017-01-04T14:11:00-05:00", "2017-01-04T14:14:00-05:00", "Strzok to Crossfire Razor Case Manager: Hay if you havent closed RAZOR, don't do so yet", "https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_FBI )
-  e.tag("Crossfire Razor", "Strzok prevents official closing of the case", truxton.TAG_ORIGIN_HUMAN)
-  add_event(child_file, "2017-01-04T14:19:01-05:00", "2017-01-04T14:19:01-05:00", "Strzok to Page: Razor still open.", "https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
-  add_event(child_file, "2017-01-04T14:19:10-05:00", "2017-01-04T14:19:10-05:00", "Page to Strzok: phew.", "https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
-  add_event(child_file, "2017-02-10T17:37:00-05:00", "2017-02-10T17:37:00-05:00", "Page to Strzok: This document pisses me off... This is lazy work on your part.", "The document is probably the Flynn 302. https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
-  add_event(child_file, "2017-02-10T22:10:00-05:00", "2017-02-10T22:10:00-05:00", "Strzok to Page: Trying to not completely re-write the thing so as to save Joe's voice... needing it soon...", "https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
+  #add_event(child_file, "2017-02-10T22:10:00-05:00", "2017-02-10T22:10:00-05:00", "Strzok to Page: Trying to not completely re-write the thing so as to save Joe's voice... needing it soon...", "https://thefederalist.com/2020/04/30/breaking-fbi-closed-flynn-case-dubbed-crossfire-razor-in-early-2017-until-strzok-ordered-it-to-stay-open/", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
   add_event(child_file, "2017-02-15T12:00:00-05:00", "2017-02-15T12:00:00-05:00", "Strzok (FBI) Files 302 on Flynn Interview", "22 days after the interview. https://assets.documentcloud.org/documents/5633260/12-17-18-Redacted-Flynn-Interview-302.pdf", EVENT_TYPE_FBI )
   add_event(child_file, "2017-05-31T12:00:00-05:00", "2017-05-31T12:00:00-05:00", "FBI amends Strzok 302 to remove 'Draft'", "127 days after the interview. https://assets.documentcloud.org/documents/5633260/12-17-18-Redacted-Flynn-Interview-302.pdf", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-23T21:30:41-05:00", "2017-01-23T21:30:41-05:00", "Page to Strzok: USC 1001 Admonition, Of Course You Know Sir Lying...", "459057200-doc-188.pdf", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
   add_event(child_file, "2017-01-24T06:46:58-05:00", "2017-01-24T06:46:58-05:00", "Strzok to James A Baker (FBI General Counsel): Potential Questions for DD's call to Flynn", "459057200-doc-188.pdf", EVENT_TYPE_FBI )
   add_event(child_file, "2017-01-24T06:46:58-05:00", "2017-01-24T06:46:58-05:00", "Priestap's Handwritten Notes: What is our goal? Truth/Admission or get him to lie so we can prosecute.", "459057200-doc-188.pdf", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-24T06:46:00-05:00", "2017-01-24T06:46:00-05:00", "Strzok to Unknown: About to email you questions for Andy in advance of his call to Flynn.", "459199066-us-v-flynn.pdf", EVENT_TYPE_FBI )
-  add_event(child_file, "2017-01-24T09:27:00-05:00", "2017-01-24T09:27:00-05:00", "Strzok to Page: Bill just told me that he brought it up again", "459199066-us-v-flynn.pdf", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
-  add_event(child_file, "2017-01-24T09:29:00-05:00", "2017-01-24T09:29:00-05:00", "Page to Strzok: Yeah dd is frustrated. Going into meeting. Don't repeat", "459199066-us-v-flynn.pdf", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
-  add_event(child_file, "2017-01-24T09:30:00-05:00", "2017-01-24T09:30:00-05:00", "Strzok to Page: I won't. Bill said D starting going one way and DD cut him off.", "459199066-us-v-flynn.pdf", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
+  #add_event(child_file, "2017-01-24T09:30:00-05:00", "2017-01-24T09:30:00-05:00", "Strzok to Page: I won't. Bill said D starting going one way and DD cut him off.", "459199066-us-v-flynn.pdf", EVENT_TYPE_STRZOK_PAGE_MESSAGE )
   add_event(child_file, "2017-01-24T17:00:00-05:00", "2017-01-24T17:30:00-05:00", "Sally Yates (DOJ) briefed on Flynn interview by Tashina Gauhar (DOJ-NSD)", "Tashina Gauhar Calendar https://www.scribd.com/document/455659490/Tashina-Gauhar-Calendars", EVENT_TYPE_DOJ )
   add_event(child_file, "2017-01-25T13:45:00-05:00", "2017-01-25T14:15:00-05:00", "Sally Yates (DOJ) briefed on details Flynn interview by Tashina Gauhar (DOJ-NSD)", "Tashina Gauhar Calendar https://www.scribd.com/document/455659490/Tashina-Gauhar-Calendars", EVENT_TYPE_DOJ )
 
@@ -2622,22 +2652,22 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   url.when = datetime.fromisoformat("2022-09-25T12:00:00-05:00")
   url.save()
 
-  add_name_and_email( child_file, "Brian Auten", "bjauten@ic.fbi.gov" ) # Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
+  add_name_subject_and_email( child_file, "Brian Auten", SUBJECT_ID_AUTEN, "bjauten@ic.fbi.gov" ) # Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
+  add_name_subject_and_email( child_file, "James A. Baker", SUBJECT_ID_JAMES_BAKER, "James.Baker@ic.fbi.gov" )
+  add_name_subject_and_email( child_file, "Charles Halliday Dolan, Jr.", SUBJECT_ID_DOLAN, "charles.dolan@kglobal.com" )
+  add_name_subject_and_email( child_file, "Joseph 'Joe' Pientka III", SUBJECT_ID_PIENTKA, "jpientka@fbi.sgov.gov" ) # SIPR, Page 85 of 460365255-Flynn-motion-to-dismiss.pdf
+  add_name_subject_and_email( child_file, "Lisa C. Page", SUBJECT_ID_PAGE, "Lisa.Page@ic.fbi.gov" ) # Lisa.Page@ic.fbi.gov shown on page 18
+  add_name_subject_and_email( child_file, "Lisa C. Page", SUBJECT_ID_PAGE, "lcpage@fbi.sgov.gov" ) # Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
+  add_name_subject_and_email( child_file, "Michael Sussman", SUBJECT_ID_SUSSMAN, "MSussmann@perkinscoie.com" )
+  add_name_subject_and_email( child_file, "Peter P. Strzok II", SUBJECT_ID_STRZOK, "peter.strzok@ic.fbi.gov" ) # NIPR, fbi.ic.gov is SCION
+  add_name_subject_and_email( child_file, "Peter P. Strzok II", SUBJECT_ID_STRZOK, "ppstrzok@fbi.sgov.gov" )
+  add_name_subject_and_email( child_file, "Susan E. Rice", SUBJECT_ID_RICE, "SRice@nsc.eop.ic.gov" )
   add_name_and_email( child_file, "Bruce Ohr", "brohr@jmd.usdoj.gov" )
   add_name_and_email( child_file, "Bruce Ohr", "Bruce.G.Ohr@usdoj.gov" )
-  add_name_and_email( child_file, "Charles Halliday Dolan, Jr.", "charles.dolan@kglobal.com" )
   add_name_and_email( child_file, "Curtis R. Ried", "CRied@nsc.eop.ic.gov" )
-  add_name_and_email( child_file, "James A. Baker", "James.Baker@ic.fbi.gov" )
   add_name_and_email( child_file, "James E. Rybicki", "James.Rybicki@ic.fbi.gov" )
   add_name_and_email( child_file, "Jonathan Moffa", "Jonathan.Moffa@ic.fbi.gov" )
   add_name_and_email( child_file, "Jonathan Moffa", "jcmoffa@fbi.sgov.gov" )
-  add_name_and_email( child_file, "Joseph 'Joe' Pientka III", "jpientka@fbi.sgov.gov" ) # SIPR, Page 85 of 460365255-Flynn-motion-to-dismiss.pdf
-  add_name_and_email( child_file, "Lisa C. Page", "Lisa.Page@ic.fbi.gov" ) # Lisa.Page@ic.fbi.gov shown on page 18
-  add_name_and_email( child_file, "Lisa C. Page", "lcpage@fbi.sgov.gov" ) # Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
-  add_name_and_email( child_file, "Michael Sussman", "MSussmann@perkinscoie.com" )
-  add_name_and_email( child_file, "Peter P. Strzok II", "peter.strzok@ic.fbi.gov" ) # NIPR, fbi.ic.gov is SCION
-  add_name_and_email( child_file, "Peter P. Strzok II", "ppstrzok@fbi.sgov.gov" )
-  add_name_and_email( child_file, "Susan E. Rice", "SRice@nsc.eop.ic.gov" )
 
   # Not from this file
   add_name_and_email( child_file, "George Toscas", "George.Toscas2@usdoj.gov" )
@@ -5074,8 +5104,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-07-25T00:44:07-04:00", "Peter. It wasn't me. No memory of minority mention or any of it. I'm sorry.")
   # Unredacted version above (Page 20 of lync messages...)
   # page_to_strzok(child_file, "2016-07-25T00:44:47-00:00", "--Redacted/Go ask her. Thought of it bc you had to Google Fisc judges and saw him there. I'm telling you--")
-  m = strzok_to_page(child_file, "2016-07-25T00:50:43-04:00", "--Redacted/I just did. She confirmed I hadn't.-- So either in told you or wanted to tell you and hadn't. --Redacted/She brought up a good point about being circumspect in talking to him in terms of notplacing him into a situation where he'd have to recuse himself.--")
-  m.addnote("Unredaction by Fox News https://web.archive.org/web/20181225103513/https://www.foxnews.com/politics/strzok-page-texts-reveal-personal-relationship-between-fbi-official-and-judge-recused-from-flynn-case")
+  #m = strzok_to_page(child_file, "2016-07-25T00:50:43-04:00", "--Redacted/I just did. She confirmed I hadn't.-- So either in told you or wanted to tell you and hadn't. --Redacted/She brought up a good point about being circumspect in talking to him in terms of notplacing him into a situation where he'd have to recuse himself.--")
+  #m.addnote("Unredaction by Fox News https://web.archive.org/web/20181225103513/https://www.foxnews.com/politics/strzok-page-texts-reveal-personal-relationship-between-fbi-official-and-judge-recused-from-flynn-case")
 
   # unredacted version Page 21 of lync messages.pdf
   # page_to_strzok(child_file, "2016-07-25T00:52:07-00:00", "--Redacted--")
@@ -10131,7 +10161,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
 
   s = t.newsubject()
-  s.id = "01538955-133D-D2C1-A9E9-ADFF27FA80F4"
+  s.id = SUBJECT_ID_PAGE
   s.name = "Lisa C. Page"
   s.description = "Lawyer FBI, McCabe's Legal Counsel"
   s.custom = "Husband: Joseph Burrow, full name Lisa Caroline Page"
@@ -10148,7 +10178,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
 
   s = t.newsubject()
-  s.id = "01738955-133D-D2C1-A9E9-ADFF27FA80F4"
+  s.id = SUBJECT_ID_STRZOK
   s.name = "Peter P. Strzok II"
   s.description = "FBI, worked on Flynn case and Clinton EMail Case (Midyear Exam)"
   s.custom = "Wife: Melissa Hodgman, full name Peter Paul Strzok"
@@ -10210,7 +10240,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
 
   s = t.newsubject()
-  s.id = "02438955-133D-D2C1-A9E9-ADFF27FA80F4"
+  s.id = SUBJECT_ID_RICE
   s.name = "Susan E. Rice"
   s.description = "National Security Advisor"
   s.birthday = datetime.fromisoformat("1964-11-17T00:00:00-00:00")
@@ -10250,7 +10280,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Olga Galkina.png")
 
   s = t.newsubject()
-  s.id = "02886B2F-A5E1-37E8-B7E4-C6B9D30E8623"
+  s.id = SUBJECT_ID_PIENTKA
   s.name = "Joseph 'Joe' Pientka III"
   # Facts we know about Joe
   # From https://gw.geneanet.org/tdowling?lang=en&pz=erica+marie&nz=tork&p=joe&n=pientka&oc=2
@@ -10290,7 +10320,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
 
   s = t.newsubject()
-  s.id = "03386B2F-A5E1-37E8-B7E4-C6B9D30E8623"
+  s.id = SUBJECT_ID_JAMES_BAKER
   s.name = "James A. Baker"
   s.description = "FBI General Counsel"
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Baker.png")
@@ -10298,7 +10328,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
 
   s = t.newsubject()
-  s.id = "03486B2F-A5E1-37E8-B7E4-C6B9D30E8623"
+  s.id = SUBJECT_ID_SUSSMAN
   s.name = "Michael Sussman"
   s.description = "Partner at Perkins Coie Privacy and Data Security Practice. Fed Alfa Bank/Trump Campaign link to James Baker at FBI"
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Sussman.png")
@@ -10314,7 +10344,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
 
   s = t.newsubject()
-  s.id = "880CA7DF-334D-402A-B3CF-7CDE15EED8BE"
+  s.id = SUBJECT_ID_DOLAN
   s.name = "Charles Halliday Dolan, Jr."
   s.description = "Hillary Campaign PR-Executive-1. Started the pee tapes rumor, fed it to Danchenko. Works for kglobal and Prism Public Affairs"
   s.birthday = datetime.fromisoformat("1950-06-12T00:00:00-00:00")
@@ -10351,7 +10381,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.save()
   
   s = t.newsubject()
-  s.id = "5BBCCB7C-2231-BA83-20D9-06F0401375C6"
+  s.id = SUBJECT_ID_AUTEN
   s.name = "Brian Auten"
   s.description = "FBI Intelligence Analyst, Crossfire Hurricane team"
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Brian Auten.png")
@@ -10511,6 +10541,38 @@ def add_name_and_email(child_file: truxton.TruxtonChildFileIO, name: str, email:
   relation.save()
   return None
   
+def add_name_subject_and_email(child_file: truxton.TruxtonChildFileIO, name: str, subject: str, email: str) -> None:
+  person = child_file.newartifact()
+  person.type = truxton.ENTITY_TYPE_PERSON
+  person.value = name
+  person.datatype = truxton.DATA_TYPE_ASCII
+  person.length = len(person.value)
+  person.save()
+  
+  email_address = child_file.newartifact()
+  email_address.type = truxton.ENTITY_TYPE_EMAIL_ADDRESS
+  email_address.value = email
+  email_address.datatype = truxton.DATA_TYPE_ASCII
+  email_address.length = len(email_address.value)
+  email_address.save()
+  
+  relation = child_file.newrelation()
+  relation.a = email_address.id
+  relation.atype = truxton.OBJECT_TYPE_ENTITY
+  relation.b = person.id
+  relation.btype = truxton.OBJECT_TYPE_ENTITY
+  relation.relation = truxton.RELATION_MESSAGE_ADDRESS
+  relation.save()
+
+  subject_relation = child_file.newrelation()
+  subject_relation.a = email_address.id
+  subject_relation.atype = truxton.OBJECT_TYPE_ENTITY
+  subject_relation.b = subject
+  subject_relation.btype = truxton.OBJECT_TYPE_SUSPECT
+  subject_relation.relation = truxton.RELATION_MESSAGE_ADDRESS
+  subject_relation.save()
+  return None
+
 def entitle(old_title: str) -> str:
   event_title = old_title.replace("\r", " ").replace("\n", " ").replace("  ", " ")
    
@@ -10599,7 +10661,7 @@ def strzok_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: 
     assert isinstance(relation, truxton.TruxtonRelation)
     relation.a = strzok_combined_id
     relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-    relation.b = "01738955-133D-D2C1-A9E9-ADFF27FA80F4"
+    relation.b = SUBJECT_ID_STRZOK
     relation.btype = truxton.OBJECT_TYPE_SUSPECT
     relation.relation = truxton.RELATION_COMBINED_ID
     relation.save()
@@ -10607,7 +10669,7 @@ def strzok_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: 
     relation = parent_file.newrelation()
     relation.a = page_combined_id
     relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-    relation.b = "01538955-133D-D2C1-A9E9-ADFF27FA80F4"
+    relation.b = SUBJECT_ID_PAGE
     relation.btype = truxton.OBJECT_TYPE_SUSPECT
     relation.relation = truxton.RELATION_COMBINED_ID
     relation.save()
@@ -10708,6 +10770,12 @@ def unknown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subjec
 
   communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter Strzok", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
   communication.finished()
+  
+  event_time = communication.sent
+  event_title = entitle("Unknown to Strzok: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
   return communication
 
 def strzok_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
@@ -10720,6 +10788,12 @@ def strzok_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subjec
 
   communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter Strzok", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
   communication.finished()
+  
+  event_time = communication.sent
+  event_title = entitle("Strzok to Unknown: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
   return communication
 
 def fbi_analysis_chat(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
