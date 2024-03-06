@@ -3,6 +3,7 @@ import shutil
 import base64
 import os
 import os.path
+import struct
 
 from datetime import datetime, timedelta, timezone
 from calendar import timegm
@@ -14,7 +15,6 @@ sys.path.append('C:/Program Files/Truxton/SDK')
 import truxton
 
 # https://www.scribd.com/document/377540616/PS-LP-Text-Messages-Dec-2016-May-2017#from_embed
-# https://dailycaller.com/2018/06/12/strzok-texts-highly-questionable/
 
 # Redaction convention.
 # Something redacted will have the lable of "--Redacted--"
@@ -64,16 +64,17 @@ def main() -> None:
 
   print("Support Documents Folder: " + SUPPORT_DOCUMENTS_FOLDER)
 
-  t = truxton.create()
-  print("Truxton Version: " + t.version)
-  initialize_types(t)
+  global TRUXTON_OBJECT
+  TRUXTON_OBJECT = truxton.create()
+  print("Truxton Version: " + TRUXTON_OBJECT.version)
+  initialize_types(TRUXTON_OBJECT)
 
   # Create the media to load files into
-  media = create_media(t)
+  media = create_media(TRUXTON_OBJECT)
 
   # Now create an investigation
   global Investigation
-  Investigation = create_investigation(t)
+  Investigation = create_investigation(TRUXTON_OBJECT)
   Investigation.addnote("The redaction convention used here is something that was redacted will be marked --Redacted--, a guess at a redactions meaning will have a question mark --Redacted/Guess-- and an unredaction will be a slash --Redacted/Meaning--")
 
   # Associate the media with this investigation
@@ -148,14 +149,14 @@ def main() -> None:
   ie2.when = truxton.parsetime("2016-10-09T13:24:27-00:00")
   ie2.save()
 
-  t.reindexmedia(Crossfire_Typhoon.id)
-  t.reindexmedia(Crossfire_Razor.id)
-  t.reindexmedia(Crossfire_Fury.id)
-  t.reindexmedia(Crossfire_Dragon.id)
-  t.reindexmedia(media.id)
+  TRUXTON_OBJECT.reindexmedia(Crossfire_Typhoon.id)
+  TRUXTON_OBJECT.reindexmedia(Crossfire_Razor.id)
+  TRUXTON_OBJECT.reindexmedia(Crossfire_Fury.id)
+  TRUXTON_OBJECT.reindexmedia(Crossfire_Dragon.id)
+  TRUXTON_OBJECT.reindexmedia(media.id)
   
   # Tell the Truxton ETL layer to finish processing the media
-  #message = t.newmessage()
+  #message = TRUXTON_OBJECT.newmessage()
   #message.mediaid = Crossfire_Typhoon.id
   #message.send("finished")
   #message.mediaid = Crossfire_Razor.id
@@ -7323,7 +7324,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-11T21:59:43-04:00", "But yeah, I can totally see that.")
   page_to_strzok(child_file, "2016-10-11T21:59:59-04:00", "I get that, but it's going to unhappen, and right quick.")
   strzok_to_page(child_file, "2016-10-11T22:04:19-04:00", "Yeah, checking Sentinel now. Looks like cd7A now has access...not sure if that was a recent add. Jon and I can no longer see it, though it's more relevant for the IAs to be able to. Of course, Jon and I are still here, and none of them are.\n\nStill, irritating....we'll get it fixed")
-  strzok_to_page(child_file, "2016-10-11T22:21:22-04:00", "Currently fighting with --Redacted--")
+  # Unredacted version at https://dailycaller.com/2018/06/12/strzok-texts-highly-questionable/
+  strzok_to_page(child_file, "2016-10-11T22:21:22-04:00", "Currently fighting with Stu for this FISA")
   strzok_to_page(child_file, "2016-10-11T22:38:19-04:00", "Can I call you when we're done?")
   page_to_strzok(child_file, "2016-10-11T22:48:26-04:00", "Yes, though will be hard.")
   m = strzok_to_page(child_file, "2016-10-12T00:05:06-04:00", "And yes, please bring it in. Just leaving now. Had to double back to talk to Toscas. Have his nsts line now, at least.")
@@ -10207,7 +10209,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.id = "02038955-133D-D2C1-A9E9-ADFF27FA80F4"
   s.name = "Samantha Power"
   s.description = "United States UN Ambassador"
-  s.custom = "Prolific SIGINT unmasker"
+  s.custom = "Prolific intelligence unmasker. Made 260 unmasking requests in her last year in office. Clearly lacks the ability to think in the abstract."
   s.birthday = datetime.fromisoformat("1970-09-21T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Samantha Power.png")
   s.save()
@@ -10541,7 +10543,7 @@ def add_name_and_email(child_file: truxton.TruxtonChildFileIO, name: str, email:
   relation.save()
   return None
   
-def add_name_subject_and_email(child_file: truxton.TruxtonChildFileIO, name: str, subject: str, email: str) -> None:
+def add_name_subject_and_email(child_file: truxton.TruxtonChildFileIO, name: str, subject_id: str, email: str) -> None:
   person = child_file.newartifact()
   person.type = truxton.ENTITY_TYPE_PERSON
   person.value = name
@@ -10549,28 +10551,36 @@ def add_name_subject_and_email(child_file: truxton.TruxtonChildFileIO, name: str
   person.length = len(person.value)
   person.save()
   
-  email_address = child_file.newartifact()
-  email_address.type = truxton.ENTITY_TYPE_EMAIL_ADDRESS
-  email_address.value = email
-  email_address.datatype = truxton.DATA_TYPE_ASCII
-  email_address.length = len(email_address.value)
+  split_address = email.split('@')
+  
+  email_address = TRUXTON_OBJECT.newmessageaddress()
+  email_address.account = split_address[0]
+  email_address.server = split_address[1]
+  email_address.name = name
   email_address.save()
   
+  # YES! This is very wonky
+  # Swap the endianess 
+  bites = struct.pack('<Q', email_address.combinedid)
+  reversed_value = struct.unpack('>Q', bites)
+  combined_id_guid = "{0:16x}".format(reversed_value[0]) + "{0:16x}".format(reversed_value[0])
+  
   relation = child_file.newrelation()
-  relation.a = email_address.id
-  relation.atype = truxton.OBJECT_TYPE_ENTITY
+  relation.a = combined_id_guid
+  relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
   relation.b = person.id
   relation.btype = truxton.OBJECT_TYPE_ENTITY
-  relation.relation = truxton.RELATION_MESSAGE_ADDRESS
+  relation.relation = truxton.RELATION_COMBINED_ID
   relation.save()
 
   subject_relation = child_file.newrelation()
-  subject_relation.a = email_address.id
-  subject_relation.atype = truxton.OBJECT_TYPE_ENTITY
-  subject_relation.b = subject
+  subject_relation.a = combined_id_guid
+  subject_relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
+  subject_relation.b = subject_id
   subject_relation.btype = truxton.OBJECT_TYPE_SUSPECT
-  subject_relation.relation = truxton.RELATION_MESSAGE_ADDRESS
+  subject_relation.relation = truxton.RELATION_COMBINED_ID
   subject_relation.save()
+
   return None
 
 def entitle(old_title: str) -> str:
