@@ -3,7 +3,7 @@ import mmap
 sys.path.append('C:/Program Files/Truxton/SDK')
 import truxton
 
-def main():
+def main() -> None:
   with open(sys.argv[1], mode="r") as input_file:
     with mmap.mmap(input_file.fileno(), length=0, access=mmap.ACCESS_READ) as memory_buffer:
       b = memory_buffer.read()
@@ -13,4 +13,4 @@ def main():
       print( details )
 
 if __name__ == "__main__":
-    main()
+  sys.exit(main())

@@ -23,7 +23,7 @@ origin_names = json.loads(trux.originnames())
 file_type_names = json.loads(trux.filetypenames())
 file_mime_types = json.loads(trux.filemimetypes())
 
-def main():
+def main() -> None:
  investigations = trux.newenumerator()
  investigations.target = truxton.Type_Investigation
 
