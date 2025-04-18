@@ -1,3 +1,7 @@
+# This is a sample OSINT script for Truxton
+# You can download Truxton for free at truxtonforensics.com
+# Details at truxwiki.com
+
 import sys
 import shutil
 import base64
@@ -101,6 +105,7 @@ SUBJECT_ID_MOFFA        = "B36966ED-A2E0-4E6B-A341-3B678C892E9E"
 SUBJECT_ID_ANDERSON     = "E635AEEB-FCB3-466C-9997-437DBE4C564C"
 SUBJECT_ID_STEINBACH    = "BD5C2F33-6990-C3A0-BA4E-82E5B6D212B4"
 SUBJECT_ID_MOYER        = "315124D0-8BF5-8274-A872-F13D6D043305"
+SUBJECT_ID_VARACALLI    = "30C990BF-5F3C-CCB6-BE81-DC3809D2A0FF"
 
 def main() -> None:
   head_and_tail = os.path.split(os.path.realpath(__file__))
@@ -520,6 +525,11 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   fbi_analysis_chat(child_file, "2017-01-05T18:13:03+05:00", "trump was right. still not put together....why do we do this to ourselves. what is wrong with these people")
 
   # Page 8
+  ie = Investigation.createevent()
+  ie.text = "Low level analysts purchase professional liability insurance"
+  ie.when = truxton.parsetime("2017-01-10T19:57:10+05:00")
+  ie.save()
+
   fbi_analysis_chat(child_file, "2017-01-10T19:57:10+05:00", "we all went and purchased professional liability insurance")
   fbi_analysis_chat(child_file, "2017-01-10T19:57:20+05:00", "holy crap")
   fbi_analysis_chat(child_file, "2017-01-10T19:57:23+05:00", "all the analysts too?")
@@ -1541,7 +1551,7 @@ def add_papadopoulos(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_event( child_file, "2016-03-06T12:00:00+05:00", "2016-03-06T12:05:00+05:00", "Papadopoulos begins work on campaign", "Starts work", EVENT_TYPE_CAMPAIGN)
   e = add_event( child_file, "2016-03-24T12:00:00+04:00", "2016-03-24T12:05:00+04:00", "Joseph Mifsud (MI6?) brings Female Russian national (Olga Polonskaya/Vinogradova) to meet Papadopoulos", "Meeting in London", EVENT_TYPE_MIFSUD)
   e.tag("CIA", "Mifsud probably on CIA payroll", truxton.TAG_ORIGIN_HUMAN)
-  add_event( child_file, "2017-01-27T12:00:00+05:00", "2017-01-27T12:05:00+05:00", "FBI interviews Papadopoulos", "First interview at his home in Chicago", EVENT_TYPE_FBI )
+  add_event( child_file, "2017-01-27T12:00:00+05:00", "2017-01-27T17:56:32+05:00", "FBI interviews Papadopoulos", "First interview at his home in Chicago", EVENT_TYPE_FBI )
   email_event = add_event( child_file, "2016-04-26T12:00:00+04:00", "2016-04-26T12:05:00+04:00", "Joseph Mifsud (MI6?) tells Papadopoulos 'the Russians had emails of Clinton'", "Andaz Hotel in London. 'Thousands of emails'", EVENT_TYPE_MIFSUD)
   meeting_event = add_event( child_file, "2016-03-14T12:00:00+04:00", "2016-03-14T12:05:00+04:00", "Joseph Mifsud (MI6?) meets Papadopoulos in Italy", "Meets at Link Campus Italy", EVENT_TYPE_MIFSUD)
   add_event( child_file, "2016-03-31T12:00:00+04:00", "2016-03-31T12:05:00+04:00", "Papadopoulos attends meeting with Trump", "National Security Meeting in DC", EVENT_TYPE_CAMPAIGN)
@@ -1869,6 +1879,16 @@ def add_barnett_302(parent_file: truxton.TruxtonChildFileIO) -> None:
   # Phase 2 - 2017-01-04 until 2017-01-24 (Flynn Interview)
   # Phase 3 - 2017-01-24 until present
 
+  ie = Investigation.createevent()
+  ie.text = "End of First Phase of Crossfire Hurricane (according to Barnett testimony)"
+  ie.when = truxton.parsetime("2017-01-04T14:00:00+05:00")
+  ie.save()
+
+  ie = Investigation.createevent()
+  ie.text = "End of Second Phase of Crossfire Hurricane (according to Barnett testimony)"
+  ie.when = truxton.parsetime("2017-01-24T14:00:00+05:00")
+  ie.save()
+
   # SSA 1 is Pientka? Pientka is SSA in CI briefing
   # SA 1 is Pientka?
   # SCO Atty 1 is most likely Brandon Van Grack (https://www.emptywheel.net/2020/09/25/sidney-powell-accuses-william-barnett-of-outrageous-deliberate-misconduct-and-kenneth-kohl-hides-evidence-that-brandon-van-grack-did-not/)
@@ -1932,8 +1952,8 @@ def add_brennan(parent_file: truxton.TruxtonChildFileIO) -> None:
   url.when = datetime.fromisoformat("2020-10-06T12:00:00+04:00")
   url.save()
 
-  add_event(child_file, "2016-07-26T12:00:00+04:00", "2016-07-26T12:00:00+04:00", "Hillary approves plan to villify Trump", "Or so the Russians think", EVENT_TYPE_HILLARY )
-  add_event(child_file, "2016-07-28T12:00:00+04:00", "2016-07-28T12:00:00+04:00", "Brennan (CIA) briefs Obama, Susan Rice, James Comey (FBI) and Denis McDonough that Hillary approved plan to manufacture Trump-Russia scandal", "CITE alleged approved by Hillary Clinton on 26 July of a proposed from one of her foreign policy advisors (Jake Sullivan) to villify Donald Trump by stirring up a scandal claiming interference by The Russian Security Services.", EVENT_TYPE_CIA )
+  add_event(child_file, "2016-07-26T12:00:00+04:00", "2016-07-26T16:00:00+04:00", "Hillary approves plan to villify Trump", "Or so the Russians think", EVENT_TYPE_HILLARY )
+  add_event(child_file, "2016-07-28T12:00:00+04:00", "2016-07-28T16:00:00+04:00", "Brennan (CIA) briefs Obama, Susan Rice, James Comey (FBI) and Denis McDonough that Hillary approved plan to manufacture Trump-Russia scandal", "CITE alleged approved by Hillary Clinton on 26 July of a proposed from one of her foreign policy advisors (Jake Sullivan) to villify Donald Trump by stirring up a scandal claiming interference by The Russian Security Services.", EVENT_TYPE_CIA )
 
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "ENCLOSURE_2__DCIA_Memo_09-07-16__U.pdf")
   #child_file.tag("Memo","CIA to FBI informing them of Hillary's Russian Collusion plan")
@@ -2114,8 +2134,8 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   add_name_subject_and_email( child_file, "Lisa C. Page", SUBJECT_ID_PAGE, "lcpage@lync.fbi.gov"  )
   add_name_subject_and_email( child_file, "Peter P. Strzok II", SUBJECT_ID_STRZOK, "ppstrzok@lync.fbi.gov" )
   add_name_subject_and_email( child_file, "Sally Anne Moyer", SUBJECT_ID_MOYER, "samoyer@lync.fbi.gov" )
+  add_name_subject_and_email( child_file, "Michael F. Varacalli", SUBJECT_ID_VARACALLI, "mfvaracalli@lync.fbi.gov" ) # Page 18
   add_name_and_email( child_file, "Richard Quinn", "rpquinn@lync.fbi.gov" ) # Page 3
-  add_name_and_email( child_file, "Michael F. Varacalli", "mfvaracalli@lync.fbi.gov" ) # Page 18
   add_name_and_email( child_file, "Charles F. McGonigal", "cfmcgonigal@lync.fbi.gov" ) # Page 18 lync_strzok_to_rybicki
 
   # The timestamps are only to the one minute resolution, to keep messages in order, an artificial one-second addition to the timestamp has been added.
@@ -2457,6 +2477,113 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   m = lync_page_to_strzok( child_file, "2017-02-15T14:57:01+05:00", "Can we meet at 11 instead? I am concerned this pre-brief will run over, and i would like to talk to Andy about his 702 materials.") # Item 302
   m.addnote("702 - Probably FISA related")
   lync_strzok_to_page( child_file, "2017-02-15T14:58:00+05:00", "I don't think it's urgent re the call recap. We did mention the call occurred") # Item 303
+  lync_page_to_strzok( child_file, "2017-02-15T14:59:00+05:00", "Oh yeah. Now I recall. Why would we need to provide this to DOJ?") # Item 304
+  lync_strzok_to_page( child_file, "2017-02-15T14:59:01+05:00", "Do you think your discussion with Andy might go into 11, or does he have a hard stop?") # Item 305
+  lync_page_to_strzok( child_file, "2017-02-15T14:59:16+05:00", "He has a hard stop.") # Item 307
+  lync_strzok_to_page( child_file, "2017-02-15T14:59:17+05:00", "k. I'll make 11 work") # Item 308
+  lync_strzok_to_page( child_file, "2017-02-15T20:00:00+05:00", "Apparently D may speak about leaks") # Item 309
+  lync_strzok_to_page( child_file, "2017-02-15T20:01:00+05:00", "You should dial in") # Item 310
+  lync_strzok_to_page( child_file, "2017-02-17T14:17:00+05:00", "finishing typhoon update, done in 5 but go ahead and ask here, or i'll call in a sec") # Item 311
+  m.addnote("typhoon is Crossfire Typhoon - George Papadopoulos, case number 97F-HQ-2067748, Opened 10 Aug 2016")  
+  lync_page_to_strzok( child_file, "2017-02-17T14:18:00+05:00", "Talking this morning, you said something about whether to include in the D's prep, and I paused about it, and now I can't remember what it was.") # Item 312
+  lync_strzok_to_page( child_file, "2017-02-27T19:44:00+05:00", "I have a swirl of correspondence on SCION from OCA (some you're on, some you're not), asking for info about this. I have a very uneasy feeling that there isn't enough centralized management of our responses/messaging. I am working on responses to HPSCI QFRs right now...") # Item 313
+  lync_page_to_strzok( child_file, "2017-02-27T19:45:00+05:00", "So start documenting what you need via email..") # Item 314
+  lync_strzok_to_page( child_file, "2017-03-01T14:22:00+05:00", "Hi - hey FYI earlier on the phone, I hope I didn't come across the wrong way - just want info, asSally and I are trying to call and neither us us has detail on what was decided, eg, are we \"suggesting,\" \"asking,\" or some other term that GSA do it. Are we doing it verbally or in writing, etc.") # Item 315
+  lync_page_to_moyer( child_file, "2017-03-01T14:49:00+05:00", "Meeting with the D at 10:30. Please come if you can. I think Trisha is on the Hill, so I am prepared to talk about --Redacted-- thing in case you are not coming. I read it Monday but then was out yesterday. If you are there, I will defer to you.") # Item 316
+  m = lync_strzok_to_page( child_file, "2017-03-01T17:10:24+05:00", "For the summary for the D - just the USPERs, or include that Russians/intermediaries. That quickly gets both long and complicated. Thinking Papa, Page, M.anafort, Flynn, Phares") # Item 317
+  m.addnote("Phares is CROSS WIND - Walid Phares")
+  lync_strzok_to_page( child_file, "2017-03-01T22:53:00+05:00", "Thanks for the edits...entering them now") # Item 319
+  lync_page_to_strzok( child_file, "2017-03-02T14:43:00+05:00", "Hey could you send me the new annotated Times article?") # Item 320
+  lync_strzok_to_page( child_file, "2017-03-02T15:02:00+05:00", "yes. Call me...") # Item 321
+  lync_strzok_to_page( child_file, "2017-03-02T15:21:00+05:00", "watching cnn?") # Item 322
+  lync_strzok_to_page( child_file, "2017-03-02T16:37:00+05:00", "Hey have you had a chacne to finalize that Razor timeline? If not, can I just get a softcopy of whatever you have? Thx") # Item 323
+  lync_page_to_strzok( child_file, "2017-03-02T17:39:00+05:00", "hey can I come down and get a copy of the --Redacted--?") # Item 324
+  lync_strzok_to_page( child_file, "2017-03-02T17:40:00+05:00", "yes. Can you email me the timeline? Or, wait, because I have things to adc") # Item 325
+  lync_page_to_strzok( child_file, "2017-03-02T17:43:00+05:00", "you watching?! he's being an adult so far...") # Item 326
+  lync_strzok_to_page( child_file, "2017-03-02T17:45:00+05:00", "Yes - though I missed the beginning as I was photocopying for you :$") # Item 327
+  lync_strzok_to_page( child_file, "2017-03-02T17:45:01+05:00", "We need to fix the D's stuff. Not horrible but not great") # Item 328
+  lync_strzok_to_page( child_file, "2017-03-02T17:47:00+05:00", "Not sure if I want to do that, he was very specific in telling me to limit it") # Item 329
+  lync_strzok_to_page( child_file, "2017-03-02T17:47:01+05:00", "can we go down together in the context of something, or one follow the other? Let's talk about it") # Item 330
+  lync_page_to_unknown( child_file, "2017-03-07T20:57:00+05:00", "Page had contact which WAY preceded his involvement in the campaign") # Item 331
+
+  # Page 12, Senate HSGAC_Transition Req FBI004595, FBI-HJC119-CH-000458, 2025.04.10 - Page & Strzok Lync messages.pdf
+  lync_page_to_unknown( child_file, "2017-03-07T20:57:01+05:00", "And we didn't see those contacts while the campaign was ongoing.") # Item 332
+  lync_strzok_to_page( child_file, "2017-03-08T19:32:00+05:00", "Hey call me") # Item 333
+  lync_moyer_to_page( child_file, "2017-03-13T15:49:00+05:00", "Are we doing a MYE f/u today?") # Item 335
+  lync_page_to_moyer( child_file, "2017-03-13T15:49:01+05:00", "but only 30 minute") # Item 336
+  lync_page_to_moyer( child_file, "2017-03-13T15:49:02+05:00", "minutes") # Item 337
+  lync_strzok_to_page( child_file, "2017-03-13T21:49:00+05:00", "OK. Is JM the right person to talk to about it?") # Item 338
+  lync_page_to_strzok( child_file, "2017-03-13T21:50:02+05:00", "Depends on the question.") # Item 339
+  lync_strzok_to_page( child_file, "2017-03-13T21:52:00+05:00", "OK. Who may (/should) I talk to in order to understand our organizational perspective going forward, as well as toensure our investigative interests (ie, companies get material from Wiki which has not been released that might be of value to us in our investigation, and weighing how that factor plays into what we tell the providers) Trisha may know all of this but she hasnt told anyone. At least, no one actually working it.") # Item 340
+  lync_strzok_to_page( child_file, "2017-03-14T18:42:00+05:00", "And now they're getting into request to SSCI/HPSCI....where Jim and Trisha would be helpful.") # Item 341
+  lync_strzok_to_page( child_file, "2017-03-14T18:43:00+05:00", "Did the request to notify SSCI/HPSCI come from DD or D?") # Item 342
+  lync_strzok_to_page( child_file, "2017-03-14T18:45:00+05:00", "Where would we stand on just telling SSCI/HPSCI that GSA may have information of interest to them?") # Item 343
+  lync_page_to_strzok( child_file, "2017-03-14T18:55:00+05:00", "Not sure where the request to notify HPSCI came from. I think DD's idea, no?") # Item 344
+  lync_page_to_strzok( child_file, "2017-03-14T18:56:00+05:00", "If not him, Baker suggested it to him.") # Item 345
+  lync_strzok_to_page( child_file, "2017-03-14T18:56:01+05:00", "NP. Talkuing with Sally now - need to talk to you before you do to explain something...") # Item 346
+  lync_strzok_to_page( child_file, "2017-03-15T18:36:00+05:00", "cnn now") # Item 347
+  lync_moyer_to_page( child_file, "2017-03-15T21:23:00+05:00", "Kevin is (mostly) completed with the redactions of the Dragon initiation/renewal. We still need copies of theSecondary Orders from OI, and then I will redact those. I have one quick thing to make you aware of when you have a minute.") # Item 348
+  lync_page_to_doinidis( child_file, "2017-03-16T19:52:00+05:00", "CHS") # Item 349
+  lync_page_to_strzok( child_file, "2017-03-16T19:53:01+05:00", "--Redacted-- is saying that it did.") # Item 351
+  lync_strzok_to_page( child_file, "2017-03-17T13:40:00+05:00", "Hi. Looks like Bill going to London") # Item 352
+  lync_strzok_to_page( child_file, "2017-03-21T14:59:00+05:00", "Hi there. Good convo with --Redacted-- Let me know when you have a sec, talked a lot about perceptions of here outside og HQ/WF/DC circles.") # Item 353
+  lync_strzok_to_page( child_file, "2017-03-22T19:05:00+05:00", "Nunes speaking now in front of WH. We need to talk about the response to that Mar 15 lette") # Item 354
+  lync_unknown_to_page( child_file, "2017-03-24T19:11:00+05:00", "rando question. Are you/JM working the Russia stuff with HPSCI? Don't need/want specifics.") # Item 355
+  m = lync_strzok_to_page( child_file, "2017-03-27T14:20:10+04:00", "Hey so I may miss you the rest of the morning - Greg mentioned wanting to talk because SSCI looking for guidance in their investigation. Andy loathe to do anything; D wanted to see if we could at least get a list of who they're talking to, as they go along. - Jim B mentioned offers of immunity screwing things up, he is going to talk to SSCI counsel about that topic - Would like to talk about both above topics at MYE meeting, as well as discussion with --Redacted-- about --Redacted- - D provided update about convo with Warner on Friday about CH matters - Jim B talked about --Redacted--") # Item 356
+  m.addnote("CH is Crossfire Hurricane")
+  lync_moyer_to_page( child_file, "2017-03-30T13:48:00+05:00", "Let me know when you want to prep for the D's unmasking briefing") # Item 357
+  lync_moyer_to_page( child_file, "2017-03-30T13:48:01+05:00", "I'm free all morning, but my afternoon is a little light.") # Item 358
+  lync_unknown_to_page( child_file, "2017-03-30T19:58:00+05:00", "Jim Baker advised SSCI (during an unrelated call) that FBI has determined that we don't have equities in the --Redacted-- and we defer to our sister agency. Is that consistent with your understanding?") # Item 359
+  lync_strzok_to_page( child_file, "2017-03-31T17:20:00+04:00", "btw, forgot to mention this nugget from the news roundup. From The Hill") # Item 360
+  m = lync_moyer_to_page( child_file, "2017-04-05T13:41:00+05:00", "Also, I now have to go to the weekly A/DAG briefing re Crossfire. It's scheduled 1015-1045, but it has run late the past couple of times.") # Item 362
+  m.addnote("Crossfire is Crossfire Hurricane")
+  m = lync_page_to_clinesmith( child_file, "2017-04-05T14:06:00+05:00", "Can you come to the 11 with Baker?? Sally might not make it back from Crossfire in time.") # Item 363
+  m.addnote("Crossfire is Crossfire Hurricane")
+  
+  # Page 13, Senate HSGAC_Transition Req FBI004596, FBI-HJC119-CH-000459, 2025.04.10 - Page & Strzok Lync messages.pdf
+  lync_clinesmith_to_page( child_file, "2017-04-05T14:06:00+05:00", "Is it in the GC's office?") # Item 365
+  lync_unknown_to_page( child_file, "2017-04-05T16:21:00+05:00", "I said that the person we spoke about last week going to HPSCI is going to Nunes' office") # Item 366
+  m = lync_unknown_to_page( child_file, "2017-04-05T16:21:01+05:00", "he's been a problem for us in the past and very forward leaning.") # Item 367
+  m.addnote("Possibly talking about Kash Patel. He was Nunes' lead investigator looking into Crossfire Hurricane. He was the author of the Nunes Memo published 2018-01-18")
+  lync_page_to_unknown( child_file, "2017-04-05T16:21:01+05:00", "Crap.") # Item 368
+  m = lync_unknown_to_page( child_file, "2017-04-05T16:22:00+05:00", "FBI is not a fan, at least at the CTD level.") # Item 369
+  m.addnote("CTD is FBI Counterterrorism Division")
+  m = lync_page_to_unknown( child_file, "2017-04-05T16:22:01+05:00", "I will probably share gently with OCA, but will not source it.") # Item 370
+  m.addnote("OCA is Office of Congressional Affairs")
+  m = lync_moyer_to_page( child_file, "2017-04-06T14:01:00+05:00", "Do you have written guidance from OIC re the media leaks recusal issue?") # Item 371
+  m.addnote("OIC is FBI Office of Integrity and Compliance")
+  lync_page_to_moyer( child_file, "2017-04-06T14:14:00+05:00", "I don't think I do. Let me call Rybicki.") # Item 372
+  lync_page_to_moyer( child_file, "2017-04-06T14:15:00+05:00", "I'm not certain that there is written guidance, but I'll ask.") # Item 374
+  lync_moyer_to_page( child_file, "2017-04-07T13:22:00+05:00", "Hey - Do you have a copy of the full Rissia report? I read and returned, but now we're using that to prep Bill for his interview on the Hill. I can't find Moffa.") # Item 375
+  lync_page_to_moyer( child_file, "2017-04-07T14:39:00+05:00", "I have the full report.") # Item 377
+  m = lync_moyer_to_page( child_file, "2017-04-07T14:45:00+05:00", "Great. Can I get a copy? And also, do you have a TS copier up there? We don't have any in NSLB") # Item 378
+  m.addnote("TS copier - A photocopy machine certified to copy TOP SECRET documents")
+  lync_unknown_to_page( child_file, "2017-05-03T16:20:00+04:00", "5/3/2017 11:57 AM --Redacted--. (OGC) (FBI): Jonathan, i know this is well outside the scope of my work, but since i know you and know you have the ear of everyone in EM, i just figured i'd highlight quickly. D's testimony referenced Clinton's emails going to \"Anthony Weiner\" and did not say Weiner's computer. I dont know any aspect of the case, but all prior reporting was that it was on his computer, which he shared with his wife who advised HRC (and thus that made sense). thought it was peculiar at the time, and now press is off and running with it. Just wanted to highlight in case that was a misstatement by the Director (something i know he almost never makes) - again just in case; takeaway is that emails were being forwarded to weiner's account essentially.") # Item 380
+  lync_strzok_to_page( child_file, "2017-05-04T13:50:00+04:00", "So, a) wtf is with --Redacted--'s response about \"yes I talked with DD\" about no access in Rome and b) no way we should let --Redacted-- go up there, can we send --Redacted-- instead?") # Item 382
+  lync_page_to_strzok( child_file, "2017-05-04T13:50:01+04:00", "haven't read yet") # Item 383
+  lync_auten_to_page( child_file, "2017-05-04T13:57:00+04:00", "In terms of cases related to Russia, we mean our specific team's investigations, correct?") # Item 384
+  lync_page_to_auten( child_file, "2017-05-04T13:59:00+04:00", "So I would list those that are open, and probably highlight that there are other subjects that are not yet open but in consideration.") # Item 386
+  lync_auten_to_page( child_file, "2017-05-04T13:59:01+04:00", "Perfect -- can do") # Item 387
+  lync_auten_to_page( child_file, "2017-05-04T14:00:00+04:00", "Do we want summaries/status updates, or just list? Seemed like there were two thoughts in the email") # Item 388
+  lync_strzok_to_page( child_file, "2017-05-12T13:33:00+04:00", "Hey did you see the NYT push?!?") # Item 389
+  lync_page_to_strzok( child_file, "2017-05-12T13:34:00+04:00", "reading it now") # Item 390
+  lync_page_to_strzok( child_file, "2017-05-12T13:39:00+04:00", "Wow.") # Item 393
+
+  # Page 14, Senate HSGAC_Transition Req FBI004597, FBI-HJC119-CH-000460, 2025.04.10 - Page & Strzok Lync messages.pdf
+  lync_unknown_to_page( child_file, "2017-05-12T14:55:00+04:00", "Hi Lisa - it's --Redacted-- from the Midyear Exam team. The Acting Director represented us honorably yesterday. I am so grateful he was able to redirect the narrative regarding the internal level of support for Director Comey. I know it helped ease some of my anxiety.") # Item 394
+  lync_unknown_to_page( child_file, "2017-05-12T17:06:00+04:00", "Let Andy know that his testimony about Director COmey was like a vitamin B shot to morale around here") # Item 395
+  lync_unknown_to_page( child_file, "2017-05-12T17:07:00+04:00", "This morning, we started collecting cards for Comey.") # Item 396
+  lync_unknown_to_page( child_file, "2017-05-12T17:08:00+04:00", "That sounds like a great add campaign - Cards for Comey.") # Item 397
+  lync_page_to_unknown( child_file, "2017-05-12T18:03:00+04:00", "Thanks --Redacted-- I will.") # Item 401
+  lync_page_to_moffa( child_file, "2017-05-12T18:04:00+04:00", "no problem. Just let me know what you need") # Item 402
+  lync_page_to_strzok( child_file, "2017-05-17T15:19:21+04:00", "beats ms") # Item 408
+  lync_page_to_strzok( child_file, "2017-05-17T15:19:22+04:00", "me") # Item 409
+  lync_clinesmith_to_page( child_file, "2017-05-17T15:24:00+04:00", "Talked to Pete. Will proceed accordingly. We also will have the special FISA package for the D today. Just need to coordinate handing that off for signature at some point.") # Item 410
+  lync_page_to_clinesmith( child_file, "2017-05-17T15:25:00+04:00", "okay, that's easy enough. He should be available around 2 to sign that") # Item 411
+
+
+  # LEFT OFF HERE
+
 
 
 
@@ -2526,10 +2653,12 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   m.addnote("SAP possibly TOP SECRET SPECIAL ACCESS PROGRAM")
   m = lync_strzok_to_marasco( child_file, "2016-09-30T14:09:12+04:00", "Hey Steve mentioned last night that Victoria Nuland received something from a US Ambo somewhere that he/she had received from a investigative firm made up of former UK IOs. Said it related to Trump, and she was going to give it to him but was called into a meeting. Steve mentioned having --Redacted-- grab it - bottom line, we need it today (have folks traveling OCONUS on Sat on potentially the same reporting).")
   m.addnote("IOs - Intelligence Officers")
-  lync_strzok_to_pientka( child_file, "2016-10-17T17:01:55+04:00", "Any update from Mitch?")
+  m = lync_strzok_to_pientka( child_file, "2016-10-17T17:01:55+04:00", "Any update from Mitch?")
+  m.addnote("Mitch is FBI CHS Stefan Halper")
   m = lync_pientka_to_strzok( child_file, "2016-10-17T17:57:42+04:00", "update: 2 hour meeting. 10:45-12:45 Subject staying in reston and has meeting downtown at 4PM. NFI, however SSG is on. Overall cagey. No straight answers. Parced words/threaded the needle very similar to the letter and other interactions. Most interesting nuggets - did not deny knowing Sechin. Steve says hard to explain but audio will convey. there was a line where Mitch asked DRAGON to help him invite Sechin to Acmbridge, DRAGON advised his attorneys would be wary of such an act. he outright denied knowing Deveykin.")
   m.addnote("DRAGON is Crossfire Dragon, Carter Page, case number 97F-HQ-2067747, Opened 10 Aug 2016")
-  m.addnote("SSG - FBI Special Surveillance Group")
+  m.addnote("SSG is FBI Special Surveillance Group")
+  m.addnote("Mitch is FBI CHS Stefan Halper")
   lync_pientka_to_strzok( child_file, "2016-10-17T18:00:04+04:00", "Also mentioned his most campaign career will be to start a think tank - along lines of counter to current US policy. More inline with Russia and his Op Ed piece. When it came to money he inferred he had an open check...but didnt say who was paying. he is aware the other candidate has hired PIs to look into him and he knows they are doing it -in London....")
   lync_pientka_to_strzok( child_file, "2016-10-17T18:00:51+04:00", "UK - claimed to be staying with friends in UK and has an interview on Monday. We have a specific town he will be staying and willrelay to paul")
   lync_pientka_to_strzok( child_file, "2016-10-17T18:01:12+04:00", "Pretoria - again cagey - just mentioned a couple of meetings.")
@@ -2730,7 +2859,8 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   lync_moyer_to_strzok( child_file, "2017-03-08T20:05:52+05:00", "Yeah, NYO called Kevin for advice on how to answer if he asks if he's a subject. They said they were just waiting for D approval. So I guess it's been briefed???")
   lync_moyer_to_strzok( child_file, "2017-03-08T20:06:08+05:00", "I can only assume the D will not approve. It seems like terrible timing.")
   lync_moyer_to_strzok( child_file, "2017-03-08T20:06:13+05:00", "And unnecessary at this point.")
-  lync_strzok_to_page( child_file, "2017-03-16T19:53:06+04:00", "Hey it's not clear to me from that email if the Mitch stuff got redacted...")
+  m = lync_strzok_to_page( child_file, "2017-03-16T19:53:06+04:00", "Hey it's not clear to me from that email if the Mitch stuff got redacted...")
+  m.addnote("Mitch is FBI CHS Stefan Halper")
   lync_unknown_to_strzok( child_file, "2017-03-20T17:40:00+04:00", "The 2pm meeting on you calendar is to provide an overview of Crossfire to Karen Miller (as we discussed). Bob and --Redacted-- will be attending b/c (although they've been workin gon this for Branch II) they have never been \"read in.\" I would think you can do the same briefing you gave to the A/DAG several weeks ago.")
   lync_strzok_to_unknown( child_file, "2017-03-21T16:20:53+04:00", "OK thanks. Pls check with Sally - I'm OK going to DIA for the SF86")
   m = lync_strzok_to_moyer( child_file, "2017-03-22T13:37:51+04:00", "Ha. I agree. Main thing I want to do is push them on getting to Typhoon to talk")
@@ -4606,6 +4736,7 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   page_to_strzok_unix_epoch(child_file, 1496449424000, "It's just hard to be untethered to the Bureau and Andy right now. It's been bad enough without Comey, just feels like another loss.")
   m = strzok_to_page_unix_epoch(child_file, 1496531222219, "Subj in custody, btw. First ML arrest of the Trump era")
   m.addnote("ML - Major League")
+  m.addnote("Reality Winner was arrested on June 3, 2017 for leaking classified NSA report about Russian Intereference in 2016 election")
   page_to_strzok_unix_epoch(child_file, 1496539527000, "just based on Mueller's convo with him - he just didn't understand what the problem was. AND I did a lot of work to help them understand that --Redacted-- was al")
   # strzok_to_page_unix_epoch(child_file, 1496540995457, "And sigh. Ok. Don't worry too much about Mueller and --Redacted-- You're going to be ok. :)")
 
@@ -11071,7 +11202,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   ie = Investigation.createevent()
   ie.text = "Strzok in London"
   ie.when = truxton.parsetime("2016-08-03T02:14:50+04:00")
-  ie.save()
+  ie.save() 
 
   page_to_strzok(child_file, "2016-08-03T07:33:34+04:00", "New case. Information flow. Control.")
   page_to_strzok(child_file, "2016-08-03T07:34:14+04:00", "Andy. The dynamic.\n\nAnd yeah, but it's not mine to worry about.")
@@ -14693,7 +14824,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2017-06-03T03:31:31+04:00", "I get more uncertain as times goes on.\n\nYou get shy more clarity?")
   strzok_to_page(child_file, "2017-06-03T03:31:56+04:00", "Any not shy")
   strzok_to_page(child_file, "2017-06-03T11:13:04+04:00", "This is turning out to be a really hard decision. Are you settling on one place or another?")
-  strzok_to_page(child_file, "2017-06-03T11:31:36+04:00", "Because I'm really torn. I though sleep would help, but nope. I guess I'm still leaning don't go.\n\nWhere are you with you?")
+  strzok_to_page(child_file, "2017-06-03T11:31:36+04:00", "Because I'm really torn. I thought sleep would help, but nope. I guess I'm still leaning don't go.\n\nWhere are you with you?")
   page_to_strzok(child_file, "2017-06-03T11:42:34+04:00", "I'm just going to stay for now, do what they want me to do.")
   strzok_to_page(child_file, "2017-06-03T11:47:19+04:00", "Good!")
   strzok_to_page(child_file, "2017-06-03T11:48:00+04:00", "You feeling at peace with that?")
@@ -15879,7 +16010,7 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s = t.newsubject()
   s.id = SUBJECT_ID_HALPER
   s.name = "Stefan Halper"
-  s.description = "FBI Asset, was sent as CHS to target Carter Page and Papadopoulos, aka 'Source 2' in FBI IG Report, aka CHS-1 in Durham Report"
+  s.description = "FBI Asset code name Mitch, was sent as CHS to target Carter Page and Papadopoulos, aka 'Source 2' in FBI IG Report, aka CHS-1 in Durham Report"
   s.custom = "Paid over $400,000 by U.S. government"
   s.birthday = datetime.fromisoformat("1944-06-04T00:00:00-00:00")
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Stefan Halper.png")
@@ -16107,6 +16238,14 @@ def create_subjects(t: truxton.TruxtonObject) -> None:
   s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
   s.description = "FBI unit chief Office of General Counsel (Agent 5 in June 2018 IG report), Anti-Trump person"
   s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sally Moyer.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_VARACALLI
+  s.name = "Michael F. Varacalli"
+  #s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
+  s.description = "FBI agent"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Varacalli.png")
   s.save()
 
   print("The subjects of the investigation (aka suspects/players/persons of interest) created")
@@ -16782,6 +16921,29 @@ def lync_page_to_moyer(parent_file: truxton.TruxtonChildFileIO, sent: str, subje
 
   return communication
 
+def lync_page_to_doinidis(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("jdoinidis@lync.fbi.gov", "Jessica Doinidis", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Doinidis: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Doinidis: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
 def lync_page_to_perry(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
   assert isinstance(parent_file, truxton.TruxtonChildFileIO)
   communication = parent_file.newcommunication()
@@ -17166,6 +17328,52 @@ def lync_auten_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, sub
 
   event_time = communication.sent
   event_title = entitle("Auten to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_auten_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Auten to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Auten to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_auten(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Auten: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Auten: " + subject)
 
   add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
 
@@ -17740,7 +17948,7 @@ def lync_page_to_moffa(parent_file: truxton.TruxtonChildFileIO, sent: str, subje
     print( "Cannot add Page to Moffa: " + subject )
 
   event_time = communication.sent
-  event_title = entitle("Page to Moffa:" + subject)
+  event_title = entitle("Page to Moffa: " + subject)
 
   add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
 
@@ -17763,7 +17971,7 @@ def lync_page_to_smith(parent_file: truxton.TruxtonChildFileIO, sent: str, subje
     print( "Cannot add Page to Smith: " + subject )
 
   event_time = communication.sent
-  event_title = entitle("Page to Smith:" + subject)
+  event_title = entitle("Page to Smith: " + subject)
 
   add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
 
@@ -19150,7 +19358,7 @@ def add_grassley_submission(parent_file: truxton.TruxtonChildFileIO) -> None:
   #lync_unknown_to_strzok( child_file, "2017-02-24T13:23:34+05:00", "We can what if it to death.")
   #lync_unknown_to_strzok( child_file, "2017-02-24T13:24:06+05:00", "Oh yeah. Karen wants to learn. She wants to have some clue about what's going on in her section. Seeing you once every couple of weeks really does that.")
   #lync_strzok_to_unknown( child_file, "2017-02-24T13:24:25+05:00", "Don't get me started")
-  lync_strzok_to_page( child_file, "2017-03-01T17:10:24+05:00", "For the summary for the D - just the USPERs, or include that Russians/intermediaries. That quickly gets both long and complicated. Thinking Papa, Page, M.anafort, Flynn, --Redacted--")
+  #lync_strzok_to_page( child_file, "2017-03-01T17:10:24+05:00", "For the summary for the D - just the USPERs, or include that Russians/intermediaries. That quickly gets both long and complicated. Thinking Papa, Page, M.anafort, Flynn, --Redacted--")
   lync_page_to_strzok( child_file, "2017-03-01T17:12:28+05:00", "I think just that. I would just make reference that there are Russia cases but not go into detail about them.")
   #m = lync_strzok_to_unknown( child_file, "2017-03-01T20:30:56+05:00", "What --Redacted-- are we covering for Dragon?")
   #m.addnote("Dragon is Crossfire Dragon, Carter Page, case number 97F-HQ-2067747, Opened 10 Aug 2016")
@@ -19209,7 +19417,7 @@ def add_grassley_submission(parent_file: truxton.TruxtonChildFileIO) -> None:
   #lync_unknown_to_strzok( child_file, "2017-03-23T20:57:23+04:00", "Went to the Wiki hearing on the Hill. SSCI. They broke in the middle for a \"members only\" discussion about what happened \"over the last 24 hours.\"")
   #lync_unknown_to_strzok( child_file, "2017-03-23T20:57:33+04:00", "They also asked about Roger Stone and his connections to Wiki.")
   #lync_unknown_to_strzok( child_file, "2017-03-23T21:10:35+04:00", "Will, Bill E punted to me so I relied on the Director's old adage - \"I'm not prepared to speak to that today.\" We'll probably get a QFR on it though.")
-  lync_strzok_to_page( child_file, "2017-03-27T14:20:10+04:00", "Hey so I may miss you the rest of the morning - Greg mentioned wanting to talk because SSCI looking for guidance in their investigation. Andy loathe to do anything; D wanted to see if we could at least get a list of who they're talking to, as they go along. - Jim B mentioned offers of immunity screwing things up, he is going to talk to SSCI counsel about that topic - Would like to talk about both above topics at MYE meeting, as well as discussion with --Redacted-- - D provided update about convo with Warner on Friday about CH matters - Jim B talked about --Redacted--")
+  #lync_strzok_to_page( child_file, "2017-03-27T14:20:10+04:00", "Hey so I may miss you the rest of the morning - Greg mentioned wanting to talk because SSCI looking for guidance in their investigation. Andy loathe to do anything; D wanted to see if we could at least get a list of who they're talking to, as they go along. - Jim B mentioned offers of immunity screwing things up, he is going to talk to SSCI counsel about that topic - Would like to talk about both above topics at MYE meeting, as well as discussion with --Redacted-- - D provided update about convo with Warner on Friday about CH matters - Jim B talked about --Redacted--")
   #lync_unknown_to_strzok( child_file, "2017-03-27T19:14:42+04:00", "Hey - I have some more info re Typhoon interview. After the call from Typhoon on Friday, DOJ --Redacted-- and EDVA have asked --Redacted-- to reach out to Typhoon's attorney. They don't want their participation known yet.")
   #lync_strzok_to_unknown( child_file, "2017-03-27T20:46:42+04:00", "Let me know if you want to talk about --Redacted-- this afternoon")
   #lync_unknown_to_strzok( child_file, "2017-03-28T21:02:13+04:00", "I just left a meeting with the current Fusion GPS client who wants to share their holdings")
