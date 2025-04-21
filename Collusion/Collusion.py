@@ -199,6 +199,7 @@ def main() -> None:
   add_flynn_memo_sept_24_2020(root_file)
   add_declassified_page_strzok_lync_messages(root_file)
   add_declassified_strzok_text_messages(root_file)
+  add_declassified_page_text_messages(root_file)
   
   ie = Investigation.createevent()
   ie.text = "We have a plan comment"
@@ -561,6 +562,7 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2016-07-31T23:10:23+04:00", "97F-HQ-25126529, Full, opened 07/31/2016.\n\nI'm certain I f'ed up serialization somehow but we'll sort that out later")
   m = strzok_to_page(child_file, "2016-07-31T23:14:59+04:00", "Well wait a minute. Sentinel now shows 97F-HQ-2063661. Go with this one.")
   m.addnote("Sentinel is the FBI's case management system")
+  m.addnote("97F-HQ-2063661 is Crossfire Hurricane")
   page_to_strzok(child_file, "2016-07-31T23:19:58+04:00", "I know. Me too. \U0001f636")
   add_event( child_file, "2017-03-28T12:00:00+04:00", "2017-03-28T12:00:00+04:00", "Strzok notes Flynn Intelligence Group properly regestered", "Meeting at DOJ with Lisa, George, and Bruce Schwartz. \"satisfied the registration obligation\" and \"no evidence of any willfulness\"", EVENT_TYPE_FBI )
 
@@ -751,7 +753,8 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2017-01-24T00:41:32+05:00", "Yep got it, Bill relayed to me")
   strzok_to_page(child_file, "2017-01-24T01:34:23+05:00", "K. Check gmail")
   page_to_strzok(child_file, "2017-01-24T02:17:48+05:00", "Dude, I am WIRED. Can't really focus on anything")
-  strzok_to_page(child_file, "2017-01-24T14:27:57+05:00", "\U0001f626\U0001f626\U0001f626\U0001f626 Bill just told --Redacted-- and me that he brought up - again, this time in front of D - showing cuts. Didn't know he was going to do that.")
+  m = strzok_to_page(child_file, "2017-01-24T14:27:57+05:00", "\U0001f626\U0001f626\U0001f626\U0001f626 Bill just told --Redacted-- and me that he brought up - again, this time in front of D - showing cuts. Didn't know he was going to do that.")
+  m.addnote("cuts is an FBI term for audio recordings. These are probably recordings of the Flynn-Kislyak phone calls.")
   page_to_strzok(child_file, "2017-01-24T14:29:01+05:00", "Yeah, dd is frustrated. Going into mtg.")
   page_to_strzok(child_file, "2017-01-24T14:29:09+05:00", "Don't repeat")
   strzok_to_page(child_file, "2017-01-24T14:30:15+05:00", "I won't. Bill said D started going one way and DD cut him off. I'd be frustrated too")
@@ -1379,27 +1382,30 @@ def add_mccabe_page_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   mccabe_to_page(child_file, "2016-10-15T18:53:03+04:00", "Got it. Just needed clearance on the statement. Will let the team know. Thanks.")
   page_to_mccabe(child_file, "2016-10-15T18:54:00+04:00", "Need me to step out and call?")
  
-  mccabe_to_page(child_file, "2016-11-15T19:19:00+05:00", "16 packages tomorrow. 4 may come separately because the still need to be signed.")
-  m = mccabe_to_page(child_file, "2016-11-16T14:32:00+05:00", "Hey can you call me on your way back. One flag for the sac svtc.")
+  # https://www.scribd.com/document/403323155/McCabe-Page-Meeting-Text#from_embed
+  # Timestamps on original document were LOCAL time, they have been converted to UTC
+  # Incoming are McCabe to Page
+  # Outgoing are Page to McCabe
+  page_to_mccabe(child_file, "2016-11-16T00:19:00+05:00", "16 packages tomorrow. 4 may come separately because the still need to be signed.")
+  m = page_to_mccabe(child_file, "2016-11-16T19:32:00+05:00", "Hey can you call me on your way back. One flag for the sac svtc.")
   m.addnote("svtc - Secure Video Teleconference")
-  mccabe_to_page(child_file, "2016-11-16T15:01:00+05:00", "Never mind. Solved.")
-  mccabe_to_page(child_file, "2016-11-17T20:28:00+05:00", "An article to share: Trump offers retired Lt. Gen. Michael Flynn the job of national security advisor, a person close to the transition says Trump offers retired Lt. Gen. Michael Flynn the job of national security adviser, a person close to the transition says http://wapo.st/2g186WC")
-  mccabe_to_page(child_file, "2016-11-18T05:39:00+05:00", "I tried sending an email to --Redacted-- but it bounced back. Are you still getting the --Redacted-- emails? DAG inquired about our plan re that FISA target if he mobilizes, given the physical access he has. Let me know if you got the email I forwarded from Tash.")
-  m = page_to_mccabe(child_file, "2016-12-12T22:16:01+05:00", "This is the piece that I just --Garbled-- source:\n\n\"U.S. Intelligence officials said the CIA has identified the \"actors\" who took possession of those stolen files and delivered them to WikiLeaks. The individuals are known for their affiliations to Russian intelligence services, but \"one step\" removed from the Russian government.\"\n\nThat is from the Post. Let's confirm tomorrow with CY and CD if they have any idea what this refers to.")
+  page_to_mccabe(child_file, "2016-11-16T20:01:00+05:00", "Never mind. Solved.")
+  page_to_mccabe(child_file, "2016-11-18T01:28:00+05:00", "An article to share: Trump offers retired Lt. Gen. Michael Flynn the job of national security advisor, a person close to the transition says Trump offers retired Lt. Gen. Michael Flynn the job of national security adviser, a person close to the transition says http://wapo.st/2g186WC")
+  #page_to_mccabe(child_file, "2016-11-18T05:39:00+05:00", "I tried sending an email to --Redacted-- but it bounced back. Are you still getting the --Redacted-- emails? DAG inquired about our plan re that FISA target if he mobilizes, given the physical access he has. Let me know if you got the email I forwarded from Tash.")
+  m = mccabe_to_page(child_file, "2016-12-13T03:16:01+05:00", "This is the piece that I just --Garbled-- source:\n\n\"U.S. Intelligence officials said the CIA has identified the \"actors\" who took possession of those stolen files and delivered them to WikiLeaks. The individuals are known for their affiliations to Russian intelligence services, but \"one step\" removed from the Russian government.\"\n\nThat is from the Post. Let's confirm tomorrow with CY and CD if they have any idea what this refers to.")
   m.addnote("CY - FBI Cyber Division")
   m.addnote("CD - FBI Counterintelligence Division")
-  m = mccabe_to_page(child_file, "2016-12-12T22:33:00+05:00", "Btw, Clapper told Pete that he (Clapper) was meeting with Brennan and Cohen for dinner tonight. Just FYSA")
-  m.addnote("FYSA - For Your Situational Awareness")
-  page_to_mccabe(child_file, "2016-12-12T22:34:01+05:00", "OK")
-  mccabe_to_page(child_file, "2017-01-10T19:05:00+05:00", "Times has it.\n\nNYTimes: Unsubstantiated Report Has Compromising Information on Trump, Intelligence Chiefs Say\nUnsubstantiated Report Has Compromising Information on Trump, Intelligence Chiefs Say http://nyti.ms/2jsp4xR")
-  mccabe_to_page(child_file, "2017-01-30T19:06:00+05:00", "There could be 11 packages tomorrow, but I think 8 still need ogc signature. Just fyi.")
-  page_to_mccabe(child_file, "2017-01-30T21:25:00+05:00", "I guess those packages won't be going anywhere.")
-  mccabe_to_page(child_file, "2017-01-30T21:33:00+05:00", "Ha. I guess not.")
-  m = mccabe_to_page(child_file, "2017-02-01T21:44:00+05:00", "You see this?\n\nhttp://wapo.st/2ktHlOX")
+  #m = page_to_mccabe(child_file, "2016-12-12T22:33:00+05:00", "Btw, Clapper told Pete that he (Clapper) was meeting with Brennan and Cohen for dinner tonight. Just FYSA")
+  #m.addnote("FYSA - For Your Situational Awareness")
+  mccabe_to_page(child_file, "2016-12-13T03:34:01+05:00", "OK")
+  page_to_mccabe(child_file, "2017-01-11T00:05:00+05:00", "Times has it.\n\nNYTimes: Unsubstantiated Report Has Compromising Information on Trump, Intelligence Chiefs Say\nUnsubstantiated Report Has Compromising Information on Trump, Intelligence Chiefs Say http://nyti.ms/2jsp4xR")
+  page_to_mccabe(child_file, "2017-01-31T00:06:00+05:00", "There could be 11 packages tomorrow, but I think 8 still need ogc signature. Just fyi.")
+  mccabe_to_page(child_file, "2017-01-31T02:25:00+05:00", "I guess those packages won't be going anywhere.")
+  mccabe_to_page(child_file, "2017-01-31T02:33:00+05:00", "Ha. I guess not.")
+  m = page_to_mccabe(child_file, "2017-02-02T02:44:00+05:00", "You see this?\n\nhttp://wapo.st/2ktHlOX")
   m.addnote("'This was the worst call by far': Trump badgered, bragged and abruptly ended phone call with Australian leader")
-  page_to_mccabe(child_file, "2017-02-01T22:20:00+05:00", "Yikes")
-  page_to_mccabe(child_file, "2017-02-05T22:20:00+05:00", "Hitting weygandt after")
-  # Completed
+  mccabe_to_page(child_file, "2017-02-02T02:20:00+05:00", "Yikes")
+  mccabe_to_page(child_file, "2017-02-06T02:20:00+05:00", "Hitting weygandt after")
 
   return None
 
@@ -1861,7 +1867,6 @@ def add_clapper_testimony(parent_file: truxton.TruxtonChildFileIO) -> None:
   return None
 
 def add_barnett_302(parent_file: truxton.TruxtonChildFileIO) -> None:
-
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/477421887-Flynn-filing-9-24-2020.pdf")
 
   url = child_file.newurl()
@@ -1972,7 +1977,6 @@ def add_brennan(parent_file: truxton.TruxtonChildFileIO) -> None:
   return None
 
 def add_ohr(parent_file: truxton.TruxtonChildFileIO) -> None:
-
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "480057685-2020-10-13-Submission-SJC-SSCI-Part-2-of-2.pdf")
   #child_file.tag("FD-302", "Bruce Ohr 302", truxton.TAG_ORIGIN_HUMAN)
   #child_file.tag("FD-1087", "USB Thumb Drive - Nellie Ohr Research for Fusion GPS", truxton.TAG_ORIGIN_HUMAN)
@@ -2067,7 +2071,6 @@ def add_flynn_NSLs(parent_file: truxton.TruxtonChildFileIO) -> None:
   return None
 
 def add_flynn_filing_10_26(parent_file: truxton.TruxtonChildFileIO) -> None:
-
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "Flynn/481804147-DOJ-Flynn-Filing-October-26-2020.pdf")
 
   url = child_file.newurl()
@@ -2084,7 +2087,6 @@ def add_flynn_filing_10_26(parent_file: truxton.TruxtonChildFileIO) -> None:
   return None
 
 def add_fbi_spreadsheet(parent_file: truxton.TruxtonChildFileIO) -> None:
-
   # Bruce Ohr 302's
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "479781400-Steele-Spreadsheet-1.pdf")
 
@@ -2124,6 +2126,199 @@ def add_mccabe_donations(parent_file: truxton.TruxtonChildFileIO) -> None:
   # Schaufeld
 
   return None
+  
+def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
+  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "2025.04.10 - Page text messages.pdf")
+  
+  # Page 1 FBI-HJC119-CH-000422 2025.04.10 - Page text messages.pdf
+  # OUTBOX == Page
+  # INBOX == Strzok
+  m = strzok_to_page(child_file, "2015-08-28T01:16:00+04:00", "And OMG remind me to tell you the fizza story. ;)" ) # Item 3
+  m.addnote("fizza could be FISA")
+  strzok_to_page(child_file, "2015-08-28T01:16:00+04:00", "And OMG remind me to tell you the fizza story. ;)" ) # Item 3
+  page_to_strzok(child_file, "2015-09-12T09:18:44+04:00", "You have any idea this was coming?\n\nJustice Dept. Says Hillary Clinton Had Authority to Delete Certain Emails http://nyti.ms/1MhHPA3\n\nAnd yes it's 5:00 and I'm up--Redacted--")
+  strzok_to_page(child_file, "2015-09-26T01:03:50+04:00", "DoJ wants to bargain away everything. I get they want to scope as narrowly as possible but they're creating a ton of extra work for everyone. Stockholm syndrome.\nAnyway, now I have to go in tomorrow so they can look thru emails.")
+  m = strzok_to_page(child_file, "2015-10-16T00:52:37+04:00", "And I'm sorry, Mitch and I just don't get along? No. He insists on different investigative paths and encourages another field office to reopen a case (of --Redacted--) we closed. Promptly leading to discussion in OI about whether the new office made material misrepresentations in their FISA application, leading to the case to be closed.") # Item 11
+  m.addnote("OI is FBI Office of Investigations")
+  strzok_to_page(child_file, "2015-10-16T00:53:23+04:00", "Or suggesting in front of CD4 and CES that somehow my SAs aren't committed or interested enough in LG and \"thinking outside the box\"") # Item 12
+  page_to_strzok(child_file, "2015-11-01T23:21:36+05:00", "Anyway, I sent one. And I hope Paul Ryan fails and crashes in a blaze of glory.")
+  page_to_strzok(child_file, "2015-11-04T11:26:00+05:00", "That was a really close race. What an utter dissappointment. Please give --Redacted/Jill-- my best.") # Item 16
+
+  # Page 2 FBI-HJC119-CH-000423 2025.04.10 - Page text messages.pdf
+  # OUTBOX == Page
+  # INBOX == Strzok
+  m = strzok_to_page(child_file, "2015-11-04T11:48:51+05:00", "A) nope. \nB) I saw. Disappointing, but look at the district map. Loudon is being gentrified, but it's still largely ignorant hillbillys. Good for her for running, but curious if she's energized or never again.") # Item 18
+  m.addnote("district - Virginia District 13 which includes Loudoun county")
+  strzok_to_page(child_file, "2015-11-22T23:55:00+05:00", "Oh god no. A thumb drive or cs or something I could look at here.") # Item 19
+  page_to_strzok(child_file, "2015-12-06T18:36:17+05:00", "And good news for my friend --Redacted--, fully cleared in that bs IG investigation. Although congress tried to force the IG to reopen the investigation. \U0001f621") # Item 20
+  strzok_to_page(child_file, "2016-02-15T00:17:45+05:00", "Sweet little stinky.\n\nGot I want to trade right now. YOU can explain how Bernie isn't electable in a general election and it's more important to field a competitive candidate....") # Item 24
+
+  # Page 3 FBI-HJC119-CH-000424 2025.04.10 - Page text messages.pdf
+  # OUTBOX == Page to Strzok
+  # INBOX == Strzok to Page
+  strzok_to_page(child_file, "2016-02-25T01:02:07+05:00", "We talked about it, but \"best\" was not in terms of agents (though that's what I wrote). It's about what the best outcome is.\n\nAnyway. Thanks.")
+  page_to_unknown(child_file, "2016-02-25T02:03:00+05:00", "Truly, Pete was overthinking it. (Which I can say as an overthinker myself). It should be 2 and 2. Let me know if you can talk tonight." ) # Item 32
+  page_to_strzok(child_file, "2016-02-25T02:20:31+05:00", "Do you or Bill fundamentally believe that 3 and 3 is the RIGHT thing for the case? If the answer is no, then you call JM back and say we're good as is. You have never wavered from saying 2 and 2 is best. I don't get what the hesitation is now.") # Item 33
+  page_to_unknown(child_file, "2016-02-25T02:56:00+05:00", "Hey, if you have one opportunity to discuss further with andy, please convey the following: She might be our next president. The last thing we need is us going in there leaded for bear, when it is not operationally necessary. You think she's going to remember or care that it was more doj than fbi? This is as much about reputational protection as anything." ) # Item 35
+  page_to_mccabe(child_file, "2016-02-25T11:41:00+05:00", "Hey, you've surely already considered this, but in my vew our best reason to hold the line at 2 and 2 is: She might be our next president. The last thing we need is us going in there loaded for bear, when it is not operationally necessary. You think she's going to remember or care that it was more doj than fbi? This is as much about reputational protection as anything." ) # Item 36
+
+  # Page 5 FBI-HJC119-CH-000426 2025.04.10 - Page text messages.pdf
+  page_to_strzok(child_file, "2016-03-04T02:27:58+05:00", "I know. It was like a piece of food! Joe says this keeps getting better every minute.") # Item 60
+
+  # Page 6 FBI-HJC119-CH-000427 2025.04.10 - Page text messages.pdf
+  m = page_to_mccabe(child_file, "2016-03-24T01:47:00+04:00", "Have been thinking we probably need a pre-meet before mye meeting in Monday. Just want to make sure we all know what we are asking for and why, where we might be willing to give, etc. Thoughts?") # Item 69
+  m.addnote("mye - Midyear Exam (Hillary Clinton classified emails)")
+
+  # Page 7 FBI-HJC119-CH-000428 2025.04.10 - Page text messages.pdf
+  mccabe_to_page(child_file, "2016-04-22T00:20:00+04:00", "Ok. How am I looking for special counsel tomorrow?") # Item 78
+  page_to_strzok(child_file, "2016-05-01T15:36:00+04:00", "Hasn't come up again, can't decide whether to bring it up on my own (sorry I lied, just didn't want to have to explain hillary case, why you'd call, etc.") # Item 80
+  page_to_strzok(child_file, "2016-05-04T00:40:00+04:00", "Hasn't come up again, can't decide whether to bring it up on my own (sorry I lied, just didn't want to have to explain hillary case, why you'd call, etc.") # Item 80
+  page_to_strzok(child_file, "2016-05-04T22:37:10+04:00", "Why not just have him send an email to Mike and Andy explaining what he think actually happened? Is it classified?") # Item 89
+
+  # Page 8 FBI-HJC119-CH-000429 2025.04.10 - Page text messages.pdf
+  m = page_to_mccabe(child_file, "2016-05-12T18:21:00+04:00", "Do you have any free time today? Want to talk briefly about MYE.") # Item 97
+  m.addnote("MYE - Midyear Exam (Hillary Clinton classified emails)")
+  m = strzok_to_page(child_file, "2016-05-13T11:43:00+04:00", "Here's what we're going to do. What I'm going to do for my sweet E.\n\nYou have lunch plans, right? I'll get lunch somewhere near a grocery store. I'll grab cupcakes. You need to tell me how many. Thus afternoon - at a minimum the time you previously were going to meet on MYE - I'm going to drive you up. Party with your little girl and squish thru cupcakes. Come back down (wash your hands, please) and I'll drive you back.") # Item 99
+  m.addnote("MYE - Midyear Exam (Hillary Clinton classified emails)")
+  page_to_mccabe(child_file, "2016-05-17T21:02:00+04:00", "Ha - check out that timing\n\nJustice Department Opens Investigation Into Russian Doping Scandal http://nyti.ms/1rSgE6W") # Item 100
+
+  # Page 9 FBI-HJC119-CH-000430 2025.04.10 - Page text messages.pdf
+  m = page_to_mccabe(child_file, "2016-05-24T00:25:00+04:00", "14 packages tomorrow, but I think D is here so you should be fine.\n\nAlso, MYE team may inquire as to how to respond, if at all, to a new Grassley letter. You should have it on the red side from exec sec. If not, I can get it to you in the morning. Have a good night.") # Item 101
+  m.addnote("MYE - Midyear Exam (Hillary Clinton classified emails)")
+  m = strzok_to_page(child_file, "2016-06-12T01:29:42+04:00", "I started. And while i hate Trump, part of me thought --Redacted-- would not/may not get into Yale because they're white and not from buttf*ck Texas...")
+  m.tag("Hatred", "i hate Trump is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
+  m = strzok_to_page(child_file, "2016-06-13T20:04:00+04:00", "****Also, remind me to tell you to flag for Andy three emails we (actually ICIG) found that have portion marks (C) on a couple of paras. Doj was Very Concerned about this, willing to bet they will tell George") # Item 107
+  m.addnote("(C) is the marking for Confidential level classified information")
+  
+  # Page 10 FBI-HJC119-CH-000431 2025.04.10 - Page text messages.pdf
+  m = strzok_to_page(child_file, "2016-07-01T17:53:25+04:00", "Yep there is a svtc next week I am going to discuss how to review it, modeled on what we did with mye") # Item 122
+  m.addnote("svtc - Secure Video Teleconference")
+  m.addnote("mye - Midyear Exam - Hillary Clinton Classified Emails")
+
+  # Page 11 FBI-HJC119-CH-000432 2025.04.10 - Page text messages.pdf
+  m = strzok_to_page(child_file, "2016-07-04T16:03:40+04:00", "And i talked to --Redacted-- 3 chains of 8-9 total emails with (C) portion markings. All in 30k Only one chain with B1 redaction (currently classified). She remembers seeing at least two B1 redactions in that chain, so she believes at least 2 emails within that chain were classified at that time.\n\nNo determination from State yet about whether they were classified at the time.\n\nBased on above, I think it reasonable to say we believe - emails with portions marked (C) in the bodies are classified (C) now and by extension (current classification and contemporaneous marking) were classified at the time.") # Item 123
+  m.addnote("(C) is the marking for Confidential level classified information")
+  m.addnote("Exemption (b)(1) specifically authorizes, under criteria established by an Executive order, information to be kept secret in the interest of National defense or foreign policy.")
+  m = strzok_to_page(child_file, "2016-07-11T10:10:24+04:00", "Worried about work, I think. How much we decide to release, the prospect of second guessing. The IG doing that bugs me; Congress doing so infuriates me.\n\nLast text was a response to your imsg to keep the advice you had given me re. M I was saying I re-read it, then sighed at the prospect of more discussion about it.")
+  m.tag("iMessage", "Strzok and Page used private iPhones to communicate without leaving evidence", truxton.TAG_ORIGIN_HUMAN)
+  m.addnote("Strzok and Page used private iPhones to communicate without leaving evidence")
+  m = strzok_to_page(child_file, "2016-07-13T01:37:44+04:00", "Gtwn, tomorrow, hopefully. Though Andy moved MYE so there's a conflict with your eyebrow business....") # Item 125
+  m.addnote("Gtwn - Georgetown, an area of Washington DC")
+  m.addnote("MYE - Midyear Exam (Hillary Clinton Classified Emails)")
+  m = strzok_to_page(child_file, "2016-07-18T19:15:00+04:00", "Btw, pulled 302s fo --Redacted-- for you, you should read and see if you want to highlight for Andy") # Item 128
+
+  # Page 12 FBI-HJC119-CH-000433 2025.04.10 - Page text messages.pdf
+  page_to_mccabe(child_file, "2016-07-22T00:40:00+04:00", "The article I mentioned today,\n\nDonald Trump Sets Conditions for Defending NATO Allies Against Attack http:nyti.ms/2ai4u3g") # Item 135
+  page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "") # Item 139
+  m = page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "They're fine. Raced to bathe and bed, now about to read mye letter while I listen to Corey booker. He's doing very well.")
+  m.addnote("mye - Midyear Exam (Hillary Clinton)")
+  strzok_to_page(child_file, "2016-07-26T01:52:21+04:00", "Sallys letter? I thought Bakers comments were ok\n\nIt's amazing to me how much better this convention is. N is FURIOUS at DNC for cooking the books against Bernie.") # Item 140
+  #strzok_to_page(child_file, "2016-07-26T03:31:00+04:00", "They are not, so far, part of the media conspiracy for Clinton.") # Item 143
+
+  # Page 13 FBI-HJC119-CH-000434 2025.04.10 - Page text messages.pdf
+  page_to_mccabe(child_file, "2016-07-28T00:27:00+04:00", "You should read this - the D surely has by now. Some of the internal links are well worth your time as well.\n\nIs Trump a Russian Agent? A Legal Analysis - Lawfare\nhttps://www.lawfareblog.com/trump-russian-agent-legal-analysis") # Item 145
+  page_to_strzok(child_file, "2016-07-31T16:48:00+04:00", "You already buy your ticket to London?") # Item 151
+  m = page_to_strzok(child_file, "2016-07-31T23:39:02+04:00", "Our Uber driver was a Muslim physicist from Camaroon. Went above and beyond to help us out, drove J back and forth to our house and wouldn't accept payment. This makes me very angry.\n\nDonald Trump\u2019s Confrontation With Muslim Soldier\u2019s Parents Emerges as Unexpected Flash Point http://nyti.ms/2aEwvgz") # Item 152
+  m.addnote("J - Page's husband Joseph Burrow")
+  
+  # Page 14 FBI-HJC119-CH-000435 2025.04.10 - Page text messages.pdf
+  page_to_mccabe(child_file, "2016-08-02T00:50:00+04:00", "Since your counsel failed to send this to you last night. \U0001f60a\n\nHow Paul Manafort Wielded Power in Ukraine Before Advising Donald Trump http://nyti.ms/2aFy026") # Item 155
+  page_to_unknown(child_file, "2016-08-03T02:22:00+04:00", "Favor to ask you: I forwarded you an email on scion asking you to show something to andy in the am to see if he needs to reach out to cyber to possibly correct a statement before tomorrow's DNC brief on the hill. Can you show it to him in the morning? Call with questions, of course. Thanks.") # Item 156
+  m = page_to_strzok(child_file, "2016-08-05T11:28:23+04:00", "Babe. You can. If you need a day, take a day. I can pickup the mye stuff, nothing else is that pressing.") # Item 158
+  m.addnote("mye - Midyear Exam (Hillary Clinton)")
+  m = strzok_to_page_unix_epoch(child_file, 1470415038866, "And hi. Went well, best we could have expected. Other than Liz's quote \"the White House is running this.\"")
+  m.addnote("scion - Sensitive Compartmented Information Operational Network")
+  m = unknown_to_page(child_file, "2016-08-08T00:29:00+04:00", "That move on the 6E redactions by them was total garbage. They knew full well they should have been doing that weeks ago...") # Item 163
+  m.addnote("6e Federal Rule of Criminal Procedure 6(e) governs the disclosure of grand jury proceedings and materials.")
+  page_to_strzok(child_file, "2016-08-08T00:29:01+04:00", "I know baby.") # Item 164
+  unknown_to_page(child_file, "2016-08-08T00:30:00+04:00", "Luckily we have that email as proof...not that it matters." ) #Item 165
+
+  # Page 15 FBI-HJC119-CH-000436 2025.04.10 - Page text messages.pdf
+  m = strzok_to_page(child_file, "2016-08-09T13:56:00+04:00", "God getting them to unlock razor cabinet takes an act of Congress. \U0001f612") # Item 168
+  m.addnote("razor is Crossfire Razor - Michael Flynn, case number 97F-NY-2069860, Opened 16 Aug 2016")
+  page_to_unknown(child_file, "2016-08-10T00:42:00+04:00", "Remind me tomorrow, I have a DNC fact/issue to share with you." ) #Item 170
+  page_to_mccabe(child_file, "2016-08-12T14:40:00+04:00", "Hey. What time does your flight leave? Baker pulling his usual \"oh, I didn't realize we were talking producing a carbon copy of the redacted 302s to state, which he is now fine with.\" Don't need to talk, just want to know when you are wheels up." ) #Item 176
+  page_to_mccabe(child_file, "2016-08-12T17:18:00+04:00", "Jim is inclined to give carbon copies of 302s to both --Redacted-- at time of production. That should alleviate their concerns. Just need to check it with the boss. Am drafting that email now. You will be on it." ) #Item 177
+  page_to_strzok(child_file, "2016-08-14T01:13:27+04:00", "But see, this article so rings true that then I think the chs is wrong...\n\nInside the Failing Mission to Save Donald Trump From Himself http://nyti.ms/2b5WSNA")
+
+  # Page 16 FBI-HJC119-CH-000437 2025.04.10 - Page text messages.pdf
+  page_to_mccabe(child_file, "2016-08-29T23:37:00+04:00", "Well this is not good.\n\nAn article to share: FBI probes foreign hacks of state election systems\nFBI probes foreign hacks of state election systems\nhttp://wapo.st/2bMtYlH" ) #Item 190
+
+  # Page 17 FBI-HJC119-CH-000438 2025.04.10 - Page text messages.pdf
+  
+  # Page 18 FBI-HJC119-CH-000439 2025.04.10 - Page text messages.pdf
+  m = strzok_to_page(child_file, "2016-09-26T00:36:38+04:00", "And def i would not send our (CD) stuff. I got the impression from Andy there was some question if the D would want to use the Crossfire info into the PC.\n\nI need to make sure CYD knows not to send it far and wide. I can see them messing that up.\n\nAnd if the background - that the community is saying it's all our fault and waiting for us, I wouldn't want to play into that in unexpected ways.") # Item 206
+  m.addnote("CD - FBI Counterintelligence Division")
+  m.addnote("CYD - FBI Cyber Division")
+  m.addnote("D - Director FBI")
+  m = strzok_to_page(child_file, "2016-09-29T01:10:29+04:00", "Like my parents!!!!!!!!!!\n\nOh sweet jes*s I need to send you what my father has been sending. The liberal media is all in the tank for Hillary. Because, you know, Trump isn't batsh*t crazy for our country...") # Item 209
+  m.tag("Hatred", "batshit crazy is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
+  strzok_to_page(child_file, "2016-09-30T01:42:15+04:00", "Hey I'm almost home, sorry. Remind me tomorrow what Victoria Nuland said.")
+
+  # Page 19 FBI-HJC119-CH-000440 2025.04.10 - Page text messages.pdf
+  page_to_mccabe(child_file, "2016-10-09T18:14:00+04:00", "Not sure if you have your eras but --Redacted-- so they wanted to make sure you had it asap. I haven't had a chance to check it out yet. Let me know if you want them to get it to you some other way." ) #Item 216
+  page_to_mccabe(child_file, "2016-10-12T19:56:00+04:00", "Hey one clarification: --Redacted--" ) #Item 220
+  page_to_mccabe(child_file, "2016-10-12T23:08:00+04:00", "OI now has a robust explanation re any possible bias of the chs in the package. Don't know what the holdup is now, other than --Redacted-- continued concerns. Strong operational need to have in place before Monday if at all possible, which means to ct tomorrow. I communicated you and boss's green light to Stu earlier, and just sent an email to --Redacted-- asking where things stood. This might take a high-level push. Will keep you posted." ) #Item 221
+
+  # Page 20 FBI-HJC119-CH-000441 2025.04.10 - Page text messages.pdf
+  strzok_to_page(child_file, "2016-10-13T02:49:40+04:00", "To check email. We got the reporting on Sept 19. Looks like Gaeta got it early August.\n\nLooking at Clinesmith's lync replies to me it's not clear if he knows if/when he told them. But --Redacted-- and --Redacted-- talked with --Redacted-- they're both good and will remember.\n\nIt's not about rubbing their nose in it. I don't care if they don't know. I just want to know who's playing games/scared covering.\n\nI totally get it will never be provable.") # Item 227
+  m = strzok_to_page(child_file, "2016-10-20T22:34:52+04:00", "Oh babe, I'm sorry. I'm worried about you. Glad J's getting home on Sat....\n\n Reading the 302 attachment I mentioned earlier. Yeah its a bit nflammatory, but nothing more than what's already apparent. And drags in Rybicki, Biuliano and Giacalone (none in a bad way)")
+  m.addnote("Giacalone is John Giacalone FBI Assistant Director of Counterterrorism Division")
+  m.addnote("J is Joseph Burrow, Page's husband")
+  mccabe_to_page(child_file, "2016-10-28T01:57:00+04:00", "I spoke to both. Both understand that no decision will be made on recusal until I return and weigh in. Jim says his meetings were mostly about the notification and statement which the boss wants to send tomorrow. I do not agree with the timing but he is insistent." ) # Item 228
+  m = strzok_to_page(child_file, "2016-10-30T21:13:57+04:00", "So, NICE!!!!\n\nYou know how my Crossfire ECPA NSLs showed the Bu's FISAMS pony was bad EVERYWHERE?\n\nGuess what?!?!?\n\nMy recent Crossfire RFPA NSL showed the Bu's pony was ALSO bad EVERYWHERE!\n\nCause God knows the first fix wouldn't cause you to look at the other ponys....\U0001f612") # Item 230
+  # Whew, a lot to unpack here. https://archives.fbi.gov/archives/news/testimony/the-fbis-use-of-national-security-letters-1
+  m.addnote("ECPA NSL - Electronic Communications Privacy Act NSL. Through an ECPA NSL, the FBI can obtain subscriber information for telephones and electronic communications and can obtain toll billing information and electronic communication transaction records.")
+  m.addnote("RFPA NSL - Right to Financial Privacy Act NSL. FBI also has the authority to issue NSLs for financial records from a financial institution.")
+  page_to_unknown(child_file, "2016-11-04T02:11:00+04:00", "All the \"custom software\" and \"building it for two weeks\" is all wrong again. Just fyi.\n\nSorting Through the Clinton Email Case and What the F.B.I.\u2019s Options Are http://nyti.ms/2ejwgcM" ) #Item 232
+  strzok_to_page(child_file, "2016-11-04T02:35:00+04:00", "I truly have no one else I would feel comfortable sharing this with.\n\nAnd I realize that's a burden on you. Thank you, more than I van probably ever repay. \u2764") # Item 233
+
+  # Page 21 FBI-HJC119-CH-000442 2025.04.10 - Page text messages.pdf
+  page_to_unknown(child_file, "2016-11-17T19:49:00+04:00", "Thought you'd appreciate this.\n\nNYTimes: What a Trump America Can Learn from a Berlusconi Italy\nWhat a Trump America Can Learn from a Berlusconi Italy http:://wapo.st/2g186WC" ) #Item 244
+
+  # Page 22 FBI-HJC119-CH-000443 2025.04.10 - Page text messages.pdf
+  page_to_mccabe(child_file, "2016-11-18T10:39:00+05:00", "I tried sending an email to amg.dd but it bounced back. Are you still getting the andrew.mccabe emails? DAG inquired about our plan re that FISA target if he mobilizes, given the physical access he has. Let me know if you got the email I forwarded from Tash.") # Item 246
+  strzok_to_page(child_file, "2016-11-18T11:18:07+05:00", "Hi. Sleep any better last night? Was just reading NYT. Apparently Mike Rogers has been to NY to visit Trump") # Item 238
+  strzok_to_page(child_file, "2016-11-25T20:29:00+05:00", "I'll be sure to bring it to --Redacted--") # Item 255
+
+  # Page 23 FBI-HJC119-CH-000444 2025.04.10 - Page text messages.pdf
+  page_to_unknown(child_file, "2016-11-26T13:58:00+04:00", "Yeah im dreading it. The real question is, will we be bringing workout clothes to --Redacted--" ) #Item 257
+  m = page_to_mccabe(child_file, "2016-12-12T03:33:00+05:00", "Btw, Clapper told Pete that he (Clapper) was meeting with Brennan and Cohen for dinner tonight. Just FYSA") # Item 263
+  m.addnote("FYSA - For Your Situational Awareness")
+  page_to_mccabe(child_file, "2016-12-13T11:41:00+05:00", "Hey, I was just thinking that OGC might have stuff off the shelf re the State Dept authorities issue because we've been fighting them on this for a while now. Might be worth asking Baker.") # Item 264
+  strzok_to_page(child_file, "2017-05-19T23:44:18+04:00", "Well that's just dumb. He heard Director Comey's statement about what we're trying to achieve, right?\n\nAnyway. Try to not dwell on all this.\n\nGetting stuff ready to go out the door...\n\nGive wonder girl a snuggle from me. \U0001f60a") # Item 267
+
+  # Page 24 FBI-HJC119-CH-000445 2025.04.10 - Page text messages.pdf
+  m = strzok_to_page(child_file, "2017-06-07T02:31:24+04:00", "A --Redacted-- \U0001f60a\U0001f60a\nC) I have no idea who the two agents are Zainab asked for. They're not associated with the team and I may need to say \"no.\" I'll do research and talk with her but I worry they're NY, in the same way Andrew worried about NY agents. And he had the sense to talk to me about what he wanted, and balance his request against those already on the team.\nD) curious comment Andrew made as I stepped out, prompting your 20 year agent comment. My sense was he wasn't necessarily happy.") # Item 272
+  m.addnote("Zainab is most likely Zainab N. Ahmad, Senior Assistant Special Counsel for Robert Mueller")
+  m = strzok_to_page(child_file, "2017-06-07T11:31:51+04:00", "I get, re --Redacted-- it's going to be emotional for all of us.\n\nI'm disappointed because i see a solid, unbroken line from mye to announcement to ch to election to momentous this, and I'm sad not to share it with you. Doesn't feel right.") # Item 273
+  m.addnote("mye - Midyear Exam (Hillary Clinton)")
+  m.addnote("ch - Crossfire Hurricane")
+  strzok_to_page_unix_epoch(child_file, 1496856670939, "Aaron would like you and Stephen to explore supplementing Andy's testimony along the lines we discussed on that one answer")
+  strzok_to_page(child_file, "2017-06-15T11:42:22+04:00", "Wp had it first. And it's as likely to be wh or interviewees leaking. All of which I would have walked through, if I had been in the room. Because, you know, media leaks is what I do for a living.") # Item 277
+  strzok_to_page(child_file, "2017-06-16T00:38:27+04:00", "God I'm so disappointed in us as an organization. I want to send 10 polygraphers to NYO and poly the whole office. Or do every, Single. Last. Employee.") # Item 278
+  strzok_to_page(child_file, "2017-06-18T12:12:00+04:00", "You made a really interesting comment at Miraval about forgiving yourself that I wanted to talk about sometime." ) # Item 280
+  page_to_strzok(child_file, "2017-06-20T02:15:00+04:00", "Because you asked her about the SC role moving forward?" ) # Item 281
+  strzok_to_page(child_file, "2017-06-20T02:16:00+04:00", "No. Because I didn't tell her we had the convo when it happened (about you being asked to come over) and the fact that we had both been working on the effort. My fault for hiding it." ) # Item 282
+  strzok_to_page(child_file, "2017-06-20T02:17:00+04:00", "I told her I wasn't going to go. She thought that was inappropriate because you should have refused." ) # Item 283
+  page_to_strzok(child_file, "2017-06-20T02:17:01+04:00", "So why didnt you say it was more recent?" ) # Item 284
+  page_to_strzok(child_file, "2017-06-20T02:17:02+04:00", "Yeah, that's what she told me. I'm not sure I follow. Why was it my obligation? I was asked first..." ) # Item 285
+  strzok_to_page(child_file, "2017-06-20T02:18:00+04:00", "I initially said it was more recent. Then I said you were asked first at some point after the initial briefings. Didn't give a time frame for that." ) # Item 286
+  strzok_to_page(child_file, "2017-06-20T03:04:59+04:00", "Why?\n\nI'm planning on saying I didn't know about them." ) # Item 288
+  page_to_strzok(child_file, "2017-06-20T09:15:00+04:00", "Because she's surely going to start googling again and will want you to say it's not true, etc." ) # Item 289
+  m = page_to_strzok(child_file, "2017-06-20T11:26:00+04:00", "Okay. I do not intend to respond. Also, I left my two iPhones at work." ) # Item 290
+  m.addnote("Strzok and Page used private iPhones to communicate without leaving evidence")
+  
+  # Page 25 FBI-HJC119-CH-000446 2025.04.10 - Page text messages.pdf
+  page_to_strzok_unix_epoch(child_file, 1497970125000, "If I am going to call, I think it makes sense to do while you are still there. Thoughts? Also, I will do it on a SC phone, just so no number comes up. Maybe 11:30." ) # Item 291
+  m = page_to_strzok(child_file, "2017-06-23T13:49:00+04:00", "Check your Verizon account, and don't text me back." ) # Item 292
+  m.addnote("Verizon account - possibly an iPhone?")
+  page_to_strzok(child_file, "2017-06-23T14:00:00+04:00", "Just confirm when you have seen it. I want no discussion." ) # Item 293
+  strzok_to_page(child_file, "2017-07-24T18:06:00+04:00", "Just leaving my IG interview now. I'll miss the tag up." ) # Item 294
+  strzok_to_page(child_file, "2017-08-08T23:16:00+04:00", "How long you see this thing running?" ) # Item 295
+  page_to_strzok(child_file, "2017-08-08T23:17:00+04:00", "A while." ) # Item 296
+
+  return None  
 
 def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "2025.04.10 - Page & Strzok Lync messages.pdf")
@@ -2522,7 +2717,8 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   lync_page_to_strzok( child_file, "2017-03-14T18:56:00+05:00", "If not him, Baker suggested it to him.") # Item 345
   lync_strzok_to_page( child_file, "2017-03-14T18:56:01+05:00", "NP. Talkuing with Sally now - need to talk to you before you do to explain something...") # Item 346
   lync_strzok_to_page( child_file, "2017-03-15T18:36:00+05:00", "cnn now") # Item 347
-  lync_moyer_to_page( child_file, "2017-03-15T21:23:00+05:00", "Kevin is (mostly) completed with the redactions of the Dragon initiation/renewal. We still need copies of theSecondary Orders from OI, and then I will redact those. I have one quick thing to make you aware of when you have a minute.") # Item 348
+  m = lync_moyer_to_page( child_file, "2017-03-15T21:23:00+05:00", "Kevin is (mostly) completed with the redactions of the Dragon initiation/renewal. We still need copies of theSecondary Orders from OI, and then I will redact those. I have one quick thing to make you aware of when you have a minute.") # Item 348
+  m.addnote("Dragon - Crossfire Dragon, Carter Page, case number 97F-HQ-2067747, Opened 10 Aug 2016")
   lync_page_to_doinidis( child_file, "2017-03-16T19:52:00+05:00", "CHS") # Item 349
   lync_page_to_strzok( child_file, "2017-03-16T19:53:01+05:00", "--Redacted-- is saying that it did.") # Item 351
   lync_strzok_to_page( child_file, "2017-03-17T13:40:00+05:00", "Hi. Looks like Bill going to London") # Item 352
@@ -2580,12 +2776,51 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   lync_page_to_strzok( child_file, "2017-05-17T15:19:22+04:00", "me") # Item 409
   lync_clinesmith_to_page( child_file, "2017-05-17T15:24:00+04:00", "Talked to Pete. Will proceed accordingly. We also will have the special FISA package for the D today. Just need to coordinate handing that off for signature at some point.") # Item 410
   lync_page_to_clinesmith( child_file, "2017-05-17T15:25:00+04:00", "okay, that's easy enough. He should be available around 2 to sign that") # Item 411
+  lync_page_to_rybicki( child_file, "2017-05-17T15:44:00+04:00", "I did a quick word search and didn't see anything particularly on point. I'm concerned that maybe it was something in closed?") # Item 412
+  lync_page_to_rybicki( child_file, "2017-05-17T15:45:00+04:00", "I'm reviewing my notes now, but if it was, we're not really going to be able to adequately respond") # Item 413
+  m = lync_clinesmith_to_page( child_file, "2017-05-17T17:44:00+04:00", "Is there time tomorrow, say 3PM or after, that you can schedule a signing for Cross Wind with the Acting Director? It appears the field is still finalizing it today.") # Item 414
+  m.addnote("Cross Wind is Walid Phares. Sounds like they are preparing a FISA request on him.")
+  lync_page_to_clinesmith( child_file, "2017-05-17T18:00:00+04:00", "totally doable. Let's talk later.") # Item 415
+  lync_strzok_to_page( child_file, "2017-05-17T18:11:00+04:00", "3:00 crossfire case update with DAG is cancelled") # Item 416
+  lync_unknown_to_page( child_file, "2017-05-17T18:31:00+04:00", "Tash is going to ride with the DAG") # Item 417
+  m = lync_page_to_moffa( child_file, "2017-05-22T11:27:00+04:00", "Would you bring the Flynn cuts too?") # Item 418
+  m.addnote("cuts is an FBI term for audio recordings. These are probably recordings of the Flynn-Kislyak phone calls.")
+  lync_unknown_to_page( child_file, "2017-05-23T21:36:00+04:00", "understandably so, but youre going to be with Director Mueller, and at the center of it all. what a very cool opportunity. I was the counsel thrown into the INSD internal review of FBI training materials as directed by Mueller when we had all the scrutiny over anti-muslim training, and you find your footing pretty quickly and realize you know more than you do") # Item 419
+  lync_strzok_to_page( child_file, "2017-06-01T19:52:00+04:00", "Hey give me a call re SSCI request") # Item 420
+  lync_page_to_pientka( child_file, "2017-06-02T14:35:00+04:00", "PS, I'm on the Special Counsel team now. For better or worse I guess") # Item 421
+  lync_page_to_clinesmith( child_file, "2017-06-07T18:07:00+04:00", "I am listening to CNN essentially read from the comey memos right nwo.") # Item 422
+  lync_clinesmith_to_page( child_file, "2017-06-07T18:08:00+04:00", "So, this is about that. If you have time I want to tip you off on some things.") # Item 423
+  lync_unknown_to_page( child_file, "2017-06-07T18:08:01+04:00", "--Redacted-- drives --- UNCLASSIFIED//FOUO") # Item 424
+  lync_clinesmith_to_page( child_file, "2017-06-07T18:08:02+04:00", "I think the A/D needs to lock those down.") # Item 425
+  lync_page_to_clinesmith( child_file, "2017-06-07T18:08:03+04:00", "can you come down here?") # Item 426
+  lync_clinesmith_to_page( child_file, "2017-06-07T18:08:04+04:00", "Yes. OMW.") # Item 427
+  lync_page_to_unknown( child_file, "2017-06-07T20:14:00+04:00", "Spoke to baker. Explained that I thought that this issue was not in our purview. I'll confirm with SC team, but in the meantime, he knows you guys should proceed based on FBI equities.'") # Item 428
+  lync_unknown_to_page( child_file, "2017-06-07T20:41:00+04:00", "ok, thanks") # Item 429
+  lync_unknown_to_page( child_file, "2017-06-08T13:42:00+04:00", "LISA! Any chance that you are here at HQ today and planning to watch Comey's testimony? If you are, I would LOVE to sit and watch it with you... what are your plans?") # Item 430
 
-
-  # LEFT OFF HERE
-
-
-
+  # Page 15, Senate HSGAC_Transition Req FBI004598, FBI-HJC119-CH-000461, 2025.04.10 - Page & Strzok Lync messages.pdf
+  lync_page_to_unknown( child_file, "2017-06-28T13:39:00+04:00", "Oh crap. I might be logged on at SC if you are trying to lync. I'm sitting at HQ right now. Do you have a desk phone handy?") # Item 434
+  lync_unknown_to_page( child_file, "2017-06-28T15:10:00+04:00", "Hey Lisa, do you have time for a quick chat? I got an email from SSCI today on an issue and wanted to quickly deconflict with you before reaching out to Stephen.") # Item 435
+  lync_page_to_strzok( child_file, "2017-07-19T14:33:00+04:00", "No, I've only ever had hard copies.") # Item 437
+  lync_strzok_to_page( child_file, "2017-07-19T14:33:01+04:00", "OK. Sorta related, how are Andy/your memos about the DAG stuff going? You want me to coord with you or Baker or someone else?") # Item 438
+  lync_strzok_to_page( child_file, "2017-07-19T14:35:00+04:00", "K. Also, please, if you have an updated Flynn timeline that you were maintaining, that would be helpful") # Item 439
+  lync_strzok_to_page( child_file, "2017-07-19T14:36:00+04:00", "Sorry for all the asks...") # Item 440
+  lync_page_to_strzok( child_file, "2017-07-19T15:11:00+04:00", "I don't have an updated timeline. I can send what I have, but I don't recall ever updating it.") # Item 441
+  lync_page_to_strzok( child_file, "2017-07-19T15:11:01+04:00", "Re memos, I am meeting with Andy at noon, and hope to get the rest of them then --Redacted-- is coming by at 1:15 for wome congressional-related question. Can I provide them to her then?") # Item 442
+  lync_strzok_to_page( child_file, "2017-07-19T15:54:00+04:00", "OK pls send what you have, I need to dig up my annotated hard copy") # Item 443
+  lync_strzok_to_page( child_file, "2017-07-19T15:55:00+04:00", "And yes that would be fine to give to --Redacted-- Thank you") # Item 444
+  lync_unknown_to_page( child_file, "2017-08-03T14:09:00+04:00", "oh nothing. I just didn't know if you were back. There was a rumor that your TDY was up") # Item 445
+  lync_page_to_unknown( child_file, "2017-08-03T14:10:00+04:00", "From Special Counsel? Yes. I decided not to renew. Trying to actually be a parent for a while") # Item 446
+  lync_unknown_to_page( child_file, "2017-08-04T15:05:00+04:00", "It was same article about people who might be called before the grand jury (was yesterday). It was Andy, Carl, a few others and Andy's attorney") # Item 447
+  lync_page_to_unknown( child_file, "2017-08-04T15:06:00+04:00", "I actually left the Special Counsel team. I need to fix my life") # Item 448
+  lync_page_to_unknown( child_file, "2017-08-04T15:06:01+04:00", "Oh yeah.") # Item 449
+  lync_unknown_to_page( child_file, "2017-08-04T15:06:02+04:00", "where r u") # Item 450
+  lync_page_to_unknown( child_file, "2017-08-04T15:06:03+04:00", "same office in the glass doors") # Item 451
+  lync_page_to_unknown( child_file, "2017-08-04T15:06:04+04:00", "back to working for Andy for now.") # Item 452
+  lync_page_to_unknown( child_file, "2017-08-04T15:07:00+04:00", "I don't think I've spoken to you since the D's firing. Geez, I don't know where the time goes") # Item 453
+  lync_unknown_to_page( child_file, "2017-08-04T15:07:01+04:00", "good. can I call in a sec") # Item 454
+  m = lync_moyer_to_page( child_file, "2017-09-25T14:28:00+04:00", "Steinbach is not on the emails that are being released (re the MYE statement)") # Item 455
+  m.addnote("MYE - Midyear Exam (Hillary Clinton classified emails)")
 
   # Page 16, FBI-HJC119-CH-000462, 2025.04.10 - Page & Strzok Lync messages.pdf
   # This corresponds to Page 3, DOJ-HSGAC20201030-000031 Johnson-Grassley_Submission.pdf 
@@ -2791,7 +3026,8 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   m = lync_varacalli_to_strzok( child_file, "2017-02-01T23:05:14+05:00", "TYPHOON has opted to meet without an attorney and is meeting with Curtis @ 1800 (now).")
   m.addnote("TYPHOON is Crossfire Typhoon - George Papadopoulos, case number 97F-HQ-2067748, Opened 10 Aug 2016")  
   lync_moyer_to_strzok( child_file, "2017-02-01T23:27:51+05:00", "Yeah. --Redacted-- has all the facts and details. Maybe we can do a lync call with field tomorrow or Friday. I'll touch base with you tomorrow.")
-  lync_strzok_to_page( child_file, "2017-02-01T23:37:55+05:00", "Have something taking the cuts to WH tomorrow")
+  m = lync_strzok_to_page( child_file, "2017-02-01T23:37:55+05:00", "Have something taking the cuts to WH tomorrow")
+  m.addnote("cuts is an FBI term for audio recordings. These are probably recordings of the Flynn-Kislyak phone calls.")
   lync_unknown_to_strzok( child_file, "2017-02-02T18:53:14+05:00", "I'm not. I just talked to Kevin and he said he heard they were concerned about leaks of the transcripts from calls with Mexico and Australia.")
   m = lync_varacalli_to_strzok( child_file, "2017-02-02T23:28:44+05:00", "Did you get the TYPHOON update from them when you spoke to --Redacted--/Kevin?")
   m.addnote("TYPHOON is Crossfire Typhoon - George Papadopoulos, case number 97F-HQ-2067748, Opened 10 Aug 2016")  
@@ -2801,7 +3037,8 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   lync_moffa_to_page( child_file, "2017-02-03T21:09:17+05:00", "Super. She asked me for the write-up we did on Hope Hicks and what we found about her in the system. So I guess that's where she went.")
 
   # Page 27, FBI-HJC119-CH-000473, 2025.04.10 - Page & Strzok Lync messages.pdf
-  lync_strzok_to_page( child_file, "2017-02-03T21:12:10+05:00", "BOONE, JENNIFER C. (CD)(FBI) 12:29 PM Do you have the cuts (or summary of cuts) re Hicks? STRZOK, PETER P. (CD)(FBI) 12:29 PM I dont think so. Didn't know there were any... BOONE, JENNIFER C. (CD)(FBI) 12:33 PM what jon referenced in the 1100s when we were still in the big conf room no worries. i'll ask moffa what he has")
+  m = lync_strzok_to_page( child_file, "2017-02-03T21:12:10+05:00", "BOONE, JENNIFER C. (CD)(FBI) 12:29 PM Do you have the cuts (or summary of cuts) re Hicks? STRZOK, PETER P. (CD)(FBI) 12:29 PM I dont think so. Didn't know there were any... BOONE, JENNIFER C. (CD)(FBI) 12:33 PM what jon referenced in the 1100s when we were still in the big conf room no worries. i'll ask moffa what he has")
+  m.addnote("cuts is an FBI term for audio recordings. These are probably recordings of the Flynn-Kislyak phone calls.")
   lync_unknown_to_strzok( child_file, "2017-02-03T21:20:21+05:00", "Flynn expected the brief and was told it wouldn't happen because of Kevin.")
   lync_varacalli_to_strzok( child_file, "2017-02-08T22:28:20+05:00", "Sent you an e-mail message about Dale Killinger briefing Flynn this afternoon. Any insight into that? Can't make this stuff up...")
   lync_unknown_to_strzok( child_file, "2017-02-09T20:41:38+05:00", "Did we hear that WashPo has FISA transcripts of Kislyak calls?")
@@ -3135,8 +3372,9 @@ def add_declassified_strzok_text_messages(parent_file: truxton.TruxtonChildFileI
   strzok_to_page(child_file, "2016-06-08T20:25:55+04:00", "Richard just called, he's just leaving main justice. They all want to talk to me privately before group call at 4:40.")
 
   # Page 31
-  strzok_to_page(child_file, "2016-06-10T19:25:21+04:00", "Also, what I discussed with Richard was don't discuss specific dates, but throw the willingness out there, tell Kendall if we find a lot of material on laptops we might need more time")
+  strzok_to_page(child_file, "2016-06-10T19:25:21+04:00", "Also, what I discussed with Richard was don't discuss specific dates, but throw the willingness out there, tell Kendall if we find a lot of material on laptops we might need more time") # Item 79
   
+  # Finished all 34 pages
   return None
 
 def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None:
@@ -3842,8 +4080,8 @@ def add_strzok_page_messages_from_grassley(parent_file: truxton.TruxtonChildFile
   page_to_strzok(child_file, "2016-02-25T00:15:28+05:00", "Best means best. It's not a trick.")
   page_to_strzok(child_file, "2016-02-25T00:15:52+05:00", "If Laufman does that, then that's doj's loss. And I think warrants a call to his superiors.")
   strzok_to_page(child_file, "2016-02-25T01:00:20+05:00", "Hi. Just leaving. Trisha still there (or at least her car is). Saw --Redacted-- leaving, too, though he didn't see me --Redacted--")
-  strzok_to_page(child_file, "2016-02-25T01:02:07+05:00", "We talked about it, but \"best\" was not in terms of agents (though that's what I wrote). It's about what the best outcome is. --Redacted--")
-  page_to_strzok(child_file, "2016-02-25T02:20:31+05:00", "Do you or Bill fundamentally believe that 3 and 3 is the RIGHT thing for the case? If the answer is no, then you call --Redacted-- back and say we're good as is. You have never wavered from saying 2 and 2 is best. I don't get what the hesitation is now.")
+  # strzok_to_page(child_file, "2016-02-25T01:02:07+05:00", "We talked about it, but \"best\" was not in terms of agents (though that's what I wrote). It's about what the best outcome is. --Redacted--")
+  #page_to_strzok(child_file, "2016-02-25T02:20:31+05:00", "Do you or Bill fundamentally believe that 3 and 3 is the RIGHT thing for the case? If the answer is no, then you call --Redacted-- back and say we're good as is. You have never wavered from saying 2 and 2 is best. I don't get what the hesitation is now.")
   page_to_strzok(child_file, "2016-02-25T02:52:36+05:00", "One more thing: she might be our next president. The last thing you need is us going in there loaded for bear. You think she's going to remember or care that it was more doj than fbi?")
   strzok_to_page(child_file, "2016-02-25T02:56:28+05:00", "Agreed. I called Bill and relayed what we discussed. He agrees. I will email you and --Redacted-- same.")
   page_to_strzok(child_file, "2016-02-25T02:57:29+05:00", "Cool. You going to call back? I have one more thing to say, so long as you are out of earshot of folks.")
@@ -4165,7 +4403,7 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   strzok_to_page_unix_epoch(child_file, 1468882441579, "And f*ck the cheating motherf*cking Russians. Bastards. I hate them")
   m = page_to_strzok_unix_epoch(child_file, 1468895008000, "And wow, Donald Trump is an enormous d*uche.")
   m.tag("Hatred", "enormous douche is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
-  page_to_strzok_unix_epoch(child_file, 1468923509000, "Trump barely spoke, but the first thing out of this mouth was \"we're going to win soooo big.\" The whole thing is like living in a bad dream.")
+  page_to_strzok_unix_epoch(child_file, 1468923509000, "Trump barely spoke, but the first thing out of his mouth was \"we're going to win soooo big.\" The whole thing is like living in a bad dream.")
   strzok_to_page_unix_epoch(child_file, 1468927122271, "Omg. You listening to npr? Apparently Melania's speech had passages lifted from Michele Obama's....unbelievable")
   page_to_strzok_unix_epoch(child_file, 1468927164000, "NO WAY!")
   page_to_strzok_unix_epoch(child_file, 1468927698000, "I saw that one the other day too! On the hill I think!")
@@ -4246,7 +4484,7 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   page_to_strzok_unix_epoch(child_file, 1470406521000, "Coming now")
   # page_to_strzok_unix_epoch(child_file, 1470408644000, "--Redacted-- too, right?")
   # Unredaction from https://thehill.com/opinion/campaign/392342-senate-probes-fbis-heavy-handed-use-of-redactions-to-obstruct-congressional/
-  strzok_to_page_unix_epoch(child_file, 1470415038866, "And hi. Went well, best we could have expected. Other than L.C's quote \"the White House is running this.\"")
+  #strzok_to_page_unix_epoch(child_file, 1470415038866, "And hi. Went well, best we could have expected. Other than L.C's quote \"the White House is running this.\"")
   strzok_to_page_unix_epoch(child_file, 1470415549978, "My answer, \"well, maybe for you they are.\" \U0001f612")
   page_to_strzok_unix_epoch(child_file, 1470416126000, "Yeah, whatever (re the WH comment). We've got emails that say otherwise.")
   m = page_to_strzok_unix_epoch(child_file, 1470494290000, "Jesus. You should read this. And Trump should go f himself. Moment in Convention Glare Shakes Up Khans' American Life http://nyti.ms")
@@ -4750,7 +4988,7 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   strzok_to_page_unix_epoch(child_file, 1496832924340, "And I've gotta say I'm a little bummed about Dir C testimony. Is what it is.")
   page_to_strzok_unix_epoch(child_file, 1496832983000, "Yup, it's fine.")
   # Appendix C Page 485 has first redaction as "Aaron"
-  strzok_to_page_unix_epoch(child_file, 1496856670939, "Aaron would like you and --Redacted-- to explore supplementing Andy's testimony along the lines we discussed on that one answer")
+  #strzok_to_page_unix_epoch(child_file, 1496856670939, "Aaron would like you and --Redacted-- to explore supplementing Andy's testimony along the lines we discussed on that one answer")
   page_to_strzok_unix_epoch(child_file, 1496937950000, "Good for Comey.")
   page_to_strzok_unix_epoch(child_file, 1496938906000, "Bad for Loretta Lynch.")
   page_to_strzok_unix_epoch(child_file, 1496938914000, "Bad for Sessions.")
@@ -4776,7 +5014,7 @@ def add_strzok_page_lync_messages(parent_file: truxton.TruxtonChildFileIO) -> No
   # Page 36 lync_text_messages_of_peter_strzok_from_2-13-16_to_12-6-17.pdf
   # 0 - Sent by strzok
   # 1 - Sent by page
-  page_to_strzok_unix_epoch(child_file, 1497970125000, "If I am going to call, I think it makes sense to do while you are still there. Thoughts? Also, I will do it on a SC phone, just so no number comes up. --Redacted--")
+  #page_to_strzok_unix_epoch(child_file, 1497970125000, "If I am going to call, I think it makes sense to do while you are still there. Thoughts? Also, I will do it on a SC phone, just so no number comes up. --Redacted--")
   strzok_to_page_unix_epoch(child_file, 1497983692441, "That, Lisa, is entirely 100% your business. You don't need me to tell you that - I'm saying that so you know I understand.")
   #strzok_to_page_unix_epoch(child_file, 1497987778456, "Shockingly, --Redacted-- is pushing me to go to OSC. How do you feel about that? How would --Redacted--")
   page_to_strzok_unix_epoch(child_file, 1497987985000, "I don't prefer that, but I really really just want this all to be over so I don't care.")
@@ -5817,9 +6055,9 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   m.tag("iMessage", "Strzok and Page used private iPhones to communicate without leaving evidence", truxton.TAG_ORIGIN_HUMAN)
   m.addnote("Strzok and Page used private iPhones to communicate without leaving evidence")
   page_to_strzok(child_file, "2015-10-16T00:49:16+04:00", "Okay.\n\nNo clue.")
-  m = strzok_to_page(child_file, "2015-10-16T00:52:37+04:00", "And I'm sorry, --Redacted-- and I just don't get along? No. He insists on different investigative paths and encourages another field office to reopen a case (of --Redacted--) we closed. Promptly leading to discussion in OI about whether the new office made material misrepresentations in their FISA application, leading to the case to be closed.")
-  m.addnote("OI is FBI Office of Investigations")
-  strzok_to_page(child_file, "2015-10-16T00:53:23+04:00", "--Redacted--\"")
+  #m = strzok_to_page(child_file, "2015-10-16T00:52:37+04:00", "And I'm sorry, --Redacted-- and I just don't get along? No. He insists on different investigative paths and encourages another field office to reopen a case (of --Redacted--) we closed. Promptly leading to discussion in OI about whether the new office made material misrepresentations in their FISA application, leading to the case to be closed.")
+  #m.addnote("OI is FBI Office of Investigations")
+  #strzok_to_page(child_file, "2015-10-16T00:53:23+04:00", "--Redacted--\"")
   strzok_to_page(child_file, "2015-10-16T00:54:01+04:00", "He is unprofessional, he actively bears a grudge and looks to find ways to highlight that when he can, and generally vastly wildly over steps his role")
   strzok_to_page(child_file, "2015-10-16T00:54:57+04:00", "He precipitates a formal meeting from Toscas to --Redacted-- in which --Redacted-- has to calm down DOJ.")
   strzok_to_page(child_file, "2015-10-16T00:55:08+04:00", "So yeah, I guess we just don't get along")
@@ -5954,7 +6192,7 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   strzok_to_page(child_file, "2015-10-31T20:36:08+04:00", "--Redacted--")
   page_to_strzok(child_file, "2015-10-31T21:22:59+04:00", "--Redacted--")
   # At 2am on 01 Nov 2015, timezone changed from -04:00 to -05:00
-  page_to_strzok(child_file, "2015-11-01T23:21:36+05:00", "--Redacted-- And I hope Paul Ryan fails and crashes in a blaze of glory.")
+  #page_to_strzok(child_file, "2015-11-01T23:21:36+05:00", "--Redacted-- And I hope Paul Ryan fails and crashes in a blaze of glory.")
   strzok_to_page(child_file, "2015-11-01T23:23:04+05:00", "Yes. And, me too. At some point the Rep party needs to pull their head out of their *ss. Shows no sign of occurring any time soon.")
   strzok_to_page(child_file, "2015-11-02T16:54:33+05:00", "Hi. Forgot I have lunch today with Iris and --Redacted-- So that's nice.")
   page_to_strzok(child_file, "2015-11-02T17:44:50+05:00", "--Redacted--")
@@ -5968,8 +6206,8 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   m.addnote("Jill McCabe wife of FBI Andrew McCabe who was running for Virginia District 13 Senator as a Democrat")
   m = page_to_strzok(child_file, "2015-11-04T11:27:43+05:00", "52/47. I'm really so disappointed. What is wrong with people?")
   m.addnote( "52% to 47% of the vote")
-  m = strzok_to_page(child_file, "2015-11-04T11:48:51+05:00", "--Redacted--\nB) I saw. Disappointing, but look at the district map. Loudon is being gentrified, but it's still largely ignorant hillbillys. Good for her for running, but curious if she's energized or never again.")
-  m.addnote("district - Virginia District 13 which includes Loudoun county")
+  #m = strzok_to_page(child_file, "2015-11-04T11:48:51+05:00", "--Redacted--\nB) I saw. Disappointing, but look at the district map. Loudon is being gentrified, but it's still largely ignorant hillbillys. Good for her for running, but curious if she's energized or never again.")
+  #m.addnote("district - Virginia District 13 which includes Loudoun county")
 
   # Page 147
   # Labelled DOJ-PROD-0000029 page 41
@@ -6170,7 +6408,7 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   page_to_strzok(child_file, "2015-12-05T15:44:04+05:00", "That would be a grave injustice and it would seriously suck. But you'd get through it, people would know it was utter bs, life would go on, and you'd be stronger for it.")
   strzok_to_page(child_file, "2015-12-05T15:48:33+05:00", "I suppose. I am very good at reveling in insecurity. Did I send you --Redacted-- response to my email last night?")
   strzok_to_page(child_file, "2015-12-05T15:52:27+05:00", "It's always nice to have outside confirmation of what you think. Of course, --Redacted-- hardly an unbiased observer.")
-  page_to_strzok(child_file, "2015-12-06T18:36:17+05:00", "--Redacted--")
+  #page_to_strzok(child_file, "2015-12-06T18:36:17+05:00", "--Redacted--")
   strzok_to_page(child_file, "2015-12-06T18:42:15+05:00", "--Redacted--")
   strzok_to_page(child_file, "2015-12-07T19:28:40+05:00", "--Redacted-- Moffa is on standby for his job interview. If he's not done I'm going to have to go at 3:10 or so. :(")
   page_to_strzok(child_file, "2015-12-07T19:43:33+05:00", "Np. I don't expect it will be done, But thank you for coming. --Redacted--")
@@ -6653,7 +6891,7 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   page_to_strzok(child_file, "2016-02-12T13:29:31+05:00", "No, not right now. Andy just started...")
   strzok_to_page(child_file, "2016-02-13T03:27:02+05:00", "Oh, he's abysmal. I keep hoping the charade will end and people will just dump him. The problem, then, is Rubio will likely lose to Cruz. The Republican party is in utter sh~mbles. When was the last competitive ticket they offered?")
   strzok_to_page(child_file, "2016-02-15T00:05:34+05:00", "--Redacted-- arguing about how great Bernie Sanders is and the evils of a two-party system.\n\nSigh")
-  strzok_to_page(child_file, "2016-02-15T00:17:45+05:00", "--Redacted-- YOU can explain how Bernie isn't electable in a general election and it's more important to field a competitive candidate....")
+  #strzok_to_page(child_file, "2016-02-15T00:17:45+05:00", "--Redacted-- YOU can explain how Bernie isn't electable in a general election and it's more important to field a competitive candidate....")
   page_to_strzok(child_file, "2016-02-15T00:19:41+05:00", "Yeah, I'd be fighting the urge to be rude and dismissive and tell him he'll realize he was wrong when he gets older.")
   page_to_strzok(child_file, "2016-02-15T00:21:57+05:00", "Hell, at least be happy he's arguing for Bernie Sanders and not Ted Cruz.")
   strzok_to_page(child_file, "2016-02-15T00:24:02+05:00", "--Redacted--\nC) true re Cruz. THAT would be enough to put him on the street entirely.")
@@ -6842,7 +7080,7 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   page_to_strzok(child_file, "2016-03-03T11:31:31+05:00", "I'm not sure if I'm coming in --Redacted-- but I'll let you know. If not, probably won't be free until after lunch.")
   strzok_to_page(child_file, "2016-03-03T11:35:41+05:00", "Oh, that's right. Np. Steinbach wants to meet his SCs and up from 2-3, and I've got to talk to my DS counterpart whenever the conference wraps up.")
   strzok_to_page(child_file, "2016-03-04T02:26:19+05:00", "What was that weird shiny thing on his lip?")
-  page_to_strzok(child_file, "2016-03-04T02:27:58+05:00", "I know. It was like a piece of food! --Redacted-- says this keeps getting better every minute.")
+  #page_to_strzok(child_file, "2016-03-04T02:27:58+05:00", "I know. It was like a piece of food! --Redacted-- says this keeps getting better every minute.")
 
   # Page 185
   # Labelled DOJ-PROD-0000067 page 25
@@ -7274,9 +7512,10 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   page_to_strzok(child_file, "2016-03-29T02:42:42+04:00", "No, they're just better than we are.")
   m = strzok_to_page(child_file, "2016-03-29T02:43:14+04:00", "Ok. I'll tell you the worst news. Per atty proffer, Combetta says, he used BleachBit (a wiping program) when he deleted the psts from the laptops.")
   m.addnote("Paul Combetta, the Platte River Networks technician who used BleachBit to erase Hillary Clinton's email after Congress sent a subpoena for the emails")
+  m.addnote("psts - Microsoft Outlook PST files. The database file used by Outlook to store email.")
   strzok_to_page(child_file, "2016-03-29T02:43:37+04:00", "\U0001f621\n\nNo one on the team knows that yet so you have to wait to tell Andy.")
   m = page_to_strzok(child_file, "2016-03-29T02:43:40+04:00", "The ones m and s used?")
-  m.addnote("m could be Monica Hanley")
+  m.addnote("m could be Monica Hanley or Mills?")
   page_to_strzok(child_file, "2016-03-29T02:44:17+04:00", "Still have to get them to confirm that. Doesn't change anything. You would never just take some attys word for it.")
   #strzok_to_page(child_file, "2016-03-29T02:44:17+04:00", "Doesn't mean they're not somewhere else, but if true, and done properly, makes this much harder.")
   strzok_to_page(child_file, "2016-03-29T02:49:01+04:00", "Apr 18 I'm in nz...although I wonder if I should cancel with the case where it is....")
@@ -7856,7 +8095,7 @@ def add_mccabe_preistap(parent_file: truxton.TruxtonChildFileIO) -> None:
   strzok_to_page(child_file, "2016-05-04T21:55:17+04:00", "Talked to --Redacted-- took it out, taking it to Jones")
   strzok_to_page(child_file, "2016-05-04T22:36:12+04:00", "Bill is super stressed about the new Fox report")
   page_to_strzok(child_file, "2016-05-04T22:36:35+04:00", "Why? What's he going to do about it?")
-  page_to_strzok(child_file, "2016-05-04T22:37:10+04:00", "Why not just have him send an email to --Redacted-- and Andy explaining what he think actually happened? Is it classified?")
+  #page_to_strzok(child_file, "2016-05-04T22:37:10+04:00", "Why not just have him send an email to --Redacted-- and Andy explaining what he think actually happened? Is it classified?")
   strzok_to_page(child_file, "2016-05-04T22:51:16+04:00", "K. Anyway, I asked --Redacted-- if it could have been DD...she wasn't sure. She didn't mention --Redacted--")
   
   # Page 234
@@ -8347,7 +8586,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-02-19T02:20:55+05:00", "And find the right moment to introduce you to N about the Apple pclob Lisa buckets stuff...")
   strzok_to_page(child_file, "2016-03-02T01:19:48+05:00", "He IS proud. And therefore me, too. \U0001f636\U0001f636\U0001f636\U0001f636\U0001f636\U0001f636\nVoted for Bernie, of course. As young idealistic kids should.")
   m = strzok_to_page(child_file, "2016-03-02T01:20:01+05:00", "He asked me who I'd vote for, guessed Kasich")
-  m.addnote("He - Strzok's son")
+  m.addnote("He - Strzok's son?")
   
   # Page 34
   page_to_strzok(child_file, "2016-03-02T01:20:11+05:00", "Yes, they should.")
@@ -8435,7 +8674,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # Page 47
   #page_to_strzok(child_file, "2016-05-04T00:41:37+04:00", "You heard that right my friend.")
   strzok_to_page(child_file, "2016-05-04T00:41:37+04:00", "I saw trump won, figured it would be a bit")
-  strzok_to_page(child_file, "2016-06-12T01:49:47+04:00", "They fully deserve to go, and demonstrate the absolute bigoted nonsense of Trump")
+  m = strzok_to_page(child_file, "2016-06-12T01:49:47+04:00", "They fully deserve to go, and demonstrate the absolute bigoted nonsense of Trump")
+  m.tag("Hatred", "absolute bigoted nonsense of Trump is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
   strzok_to_page(child_file, "2016-06-12T01:49:47+04:00", "Truly.")
 
   # Page 48
@@ -9258,7 +9498,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # Labelled DOJ-PROD-0000011 page 23
   # OUTBOX == Page
   # INBOX == Strzok
-  page_to_strzok(child_file, "2015-09-12T09:18:44+04:00", "You have any idea this was coming?\n\nJustice Dept. Says Hillary Clinton Had Authority to Delete Certain Emails http://nyti.ms/1MhHPA3\n\n--Redacted--")
+  #page_to_strzok(child_file, "2015-09-12T09:18:44+04:00", "You have any idea this was coming?\n\nJustice Dept. Says Hillary Clinton Had Authority to Delete Certain Emails http://nyti.ms/1MhHPA3\n\n--Redacted--")
   strzok_to_page(child_file, "2015-09-12T10:57:28+04:00", "--Redacted-- No idea about doj statement. We're trying to get a copy of the original filing. We think it says she was requires to preserve copies of things that were records and could delete the rest but that the filing is being taken out of context and spun. But who knows.")
   strzok_to_page(child_file, "2015-09-12T10:59:31+04:00", "What isn't clear from the article is whether or not they (doj) speak to the issue of whether or not she had authority to be operating off a private server.")
   strzok_to_page(child_file, "2015-09-12T22:23:29+04:00", "B) --Redacted-- is very nice but she's no Lisa Page. JG wanted something on Fri, So i sent an email this morning at 830 to her and --Redacted-- proposing how to handle it...crickets...")
@@ -9336,7 +9576,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # Labelled DOJ-PROD-0000014 page 26
   # OUTBOX == Page
   # INBOX == Strzok
-  strzok_to_page(child_file, "2015-09-26T01:03:50+04:00", "DoJ wants to --Redacted-- I get they want to scope as narrowly as possible but they're creating a ton of extra work for everyone. --Redacted--\nAnyway, now I have to go in tomorrow so they can look thru emails.")
+  #strzok_to_page(child_file, "2015-09-26T01:03:50+04:00", "DoJ wants to --Redacted-- I get they want to scope as narrowly as possible but they're creating a ton of extra work for everyone. --Redacted--\nAnyway, now I have to go in tomorrow so they can look thru emails.")
   strzok_to_page(child_file, "2015-09-26T01:04:39+04:00", "--Redacted--")
   page_to_strzok(child_file, "2015-09-26T04:16:39+04:00", ".I know, me too. It completely sucks.\n\nWho is coming in to read emails? That also totally sucks. --Redacted--")
   page_to_strzok(child_file, "2015-09-26T08:31:14+04:00", "What a joke:\nStill, there was progress. Never before had China agreed with Mr. Obama\u2019s fundamental premise that the theft of intellectual property for commercial gain was off limits. After weeks of behind-the-scenes negotiations with the Chinese leadership, first in Beijing in late August and then with a delegation of nearly 50 senior Chinese officials who came to Washington quietly two weeks ago, Beijing agreed to wording that read: \u201cNeither country\u2019s government will conduct or knowingly support cyber-enabled theft of intellectual property, including trade secrets or other confidential business information, with the intent of providing competitive advantages to companies or commercial sectors.\u201d\n\nLimiting Security Breaches May Be Impossible for U.S. and China http://nyti.ms/1LchlQD")
@@ -9838,8 +10078,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-06-11T01:28:12+04:00", "Am typing it up on fbi net now.") 
   page_to_strzok(child_file, "2016-06-12T01:18:30+04:00", "This gave me chills. I'm proud of these girls. Stupid f-ing bigots.\n\n2 Valedictorians in Texas Declare Undocumented Status, and Outrage Ensues http://nyti.ms/1WHYYYE") 
   page_to_strzok(child_file, "2016-06-12T01:27:35+04:00", "You've got to read the article I sent. I'm infuriated. I f-ing hate people.") 
-  m = strzok_to_page(child_file, "2016-06-12T01:29:42+04:00", "I started. And while i hate Trump, part of me thought --Redacted-- would not/may not get into --Redacted-- because they're white and not from buttf*ck Texas...")
-  m.tag("Hatred", "i hate Trump is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
+  #m = strzok_to_page(child_file, "2016-06-12T01:29:42+04:00", "I started. And while i hate Trump, part of me thought --Redacted-- would not/may not get into --Redacted-- because they're white and not from buttf*ck Texas...")
+  #m.tag("Hatred", "i hate Trump is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
   strzok_to_page(child_file, "2016-06-12T01:31:06+04:00", "I'm torn between their achievement and the reality of the limitations it places on others. All of that separate and distinct from the bigoted hatred of half (it seems ) of our population.")
   page_to_strzok(child_file, "2016-06-12T01:31:14+04:00", "Dude. THESE GIRLS ARE THE VALEDICTORIANS IN THEIR CLASS. AND ENGLISH IS THEIR SECOND LANGUAGE. AND THEY OVERCAME SERIOUS ODDS. THEY HAVE EARNED IT.") 
   page_to_strzok(child_file, "2016-06-12T01:32:07+04:00", "Do you think Yale would be best served being entirely populated by smart upper income white boys? Come on.") 
@@ -10203,7 +10443,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-07-01T11:40:03+04:00", "It's a shame because now it begins to tarnish even the FBI's good name. Very irritating.\n\nAnyway. --Redacted--")
   strzok_to_page(child_file, "2016-07-01T14:50:13+04:00", "You hopefully tune in for AG comments at 11 if you haven't left...")
   strzok_to_page(child_file, "2016-07-01T15:25:26+04:00", "But AGs talking now. Said she had decided to accept rec prior to meeting with Clinton on Monday")
-  strzok_to_page(child_file, "2016-07-01T15:25:50+04:00", "Keeps calling it \"investigation of State Department emails.\" Uh, not exactly....")
+  #strzok_to_page(child_file, "2016-07-01T15:25:50+04:00", "Keeps calling it \"investigation of State Department emails.\" Uh, not exactly....")
   
   # Page 286
   # OUTBOX == Page
@@ -10211,9 +10451,9 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-07-01T17:44:39+04:00", "And dang it, I'm hoping to catch Rybicki to throw out the Q of watching, caveated with the acknowledgment of complete undertaking of the million reasons the answer may be \"no,\" alas, without success.")
   strzok_to_page(child_file, "2016-07-01T17:47:55+04:00", "Did you end up telling Andy about what I told you about the --Redacted-- stuff, or did Bill broach it? --Redacted-- \U0001f612).")
   strzok_to_page(child_file, "2016-07-01T17:48:38+04:00", "All his DADs and SCs sat there staring at their hands. ...someone asked him why the change, he said that was for him to know....")
-  m = page_to_strzok(child_file, "2016-07-01T17:49:32+04:00", "Bill talked to him about it last night. I talked to andy about it today again. He is going to broach it with DAG extra week, but he wants CD and CyD to have a plan for review.")
-  m.addnote("CyD - FBI Cyber Division")
-  strzok_to_page(child_file, "2016-07-01T17:53:25+04:00", "--Redacted--")
+  #m = page_to_strzok(child_file, "2016-07-01T17:49:32+04:00", "Bill talked to him about it last night. I talked to andy about it today again. He is going to broach it with DAG extra week, but he wants CD and CyD to have a plan for review.")
+  #m.addnote("CyD - FBI Cyber Division")
+  #strzok_to_page(child_file, "2016-07-01T17:53:25+04:00", "--Redacted--")
   m = strzok_to_page(child_file, "2016-07-01T17:56:08+04:00", "Any intrigue on the MYE front?\n\nAnd damn it's going to be miserable to have you away for a week..... \U0001f636\U0001f636\U0001f636\U0001f636")
   m.addnote("MYE - Midyear Exam (Hillary Clinton Classified Emails)")
   m = page_to_strzok(child_file, "2016-07-01T18:01:45+04:00", "No, didn't talk about mye except for if I saw the lynch articles.")
@@ -10259,18 +10499,18 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-07-02T23:59:24+04:00", "And how do we do investigation after D announces we've completed it? We believe we know the guy who did brief, --Redacted--")
-  page_to_strzok(child_file, "2016-07-03T00:06:46+04:00", "Because the D says he's not going to say complete, just nearly complete or something like that.")
+  #page_to_strzok(child_file, "2016-07-03T00:06:46+04:00", "Because the D says he's not going to say complete, just nearly complete or something like that.")
   strzok_to_page(child_file, "2016-07-03T00:08:10+04:00", "Ok. --Redacted-- We can go there. Any other due outs? I suppose I should just wait to talk to uou.")
   page_to_strzok(child_file, "2016-07-03T00:08:48+04:00", "No, just that they both thought it would be important to get the answer to the questions about her security indoctrination, ongoing training, etc.")
   page_to_strzok(child_file, "2016-07-03T00:09:07+04:00", "And I imagine you can probably just do it by phone.")
   strzok_to_page(child_file, "2016-07-03T00:10:19+04:00", "True. Of course I want to hear what they said when they decided not to talk about the future on the call...\n\n--Redacted--")
   page_to_strzok(child_file, "2016-07-03T00:10:50+04:00", "He didn't talk to me about that.")
   strzok_to_page(child_file, "2016-07-03T00:11:23+04:00", "Oh. Well, darn. Anything else?")
-  strzok_to_page(child_file, "2016-07-03T00:11:34+04:00", "Rybicki coming in with D tomorrow...")
+  #strzok_to_page(child_file, "2016-07-03T00:11:34+04:00", "Rybicki coming in with D tomorrow...")
   page_to_strzok(child_file, "2016-07-03T00:11:48+04:00", "No, not that I can think of.")
   page_to_strzok(child_file, "2016-07-03T00:12:12+04:00", "Man, I so want to be there. You going in?")
   strzok_to_page(child_file, "2016-07-03T00:12:52+04:00", "No. They most certainly would not invite me up/in.")
-  strzok_to_page(child_file, "2016-07-03T00:13:08+04:00", "What are they doing? Rehearsing?")
+  #strzok_to_page(child_file, "2016-07-03T00:13:08+04:00", "What are they doing? Rehearsing?")
   page_to_strzok(child_file, "2016-07-03T00:13:27+04:00", "That's my guess.")
   strzok_to_page(child_file, "2016-07-03T00:17:20+04:00", "Is Andy going in tomorrow? And have you asked to see the all employee email?")
   page_to_strzok(child_file, "2016-07-03T00:18:04+04:00", "I don't know if he is. Good question. I'll ask tomorrow or Monday. Remind me.")
@@ -10308,8 +10548,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-07-03T20:33:12+04:00", "I'm glad he has you too.")
   strzok_to_page(child_file, "2016-07-03T21:12:45+04:00", "Re-reading, for like the billionth time, his statement. And fact checking again....")
   page_to_strzok(child_file, "2016-07-03T23:10:34+04:00", "--Redacted-- you shouldn't be worrying about Tuesday, that isn't what matters. --Redacted--")
-  m = strzok_to_page(child_file, "2016-07-04T16:03:40+04:00", "And i talked to --Redacted--\n\nNo determination from State yet about whether they were classified at the time.\n\nBased on above, I think it reasonable to say we believe - emails with portions marked (C) in the bodies are classified (C) now and by extension (current classification and contemporaneous marking) were classified at the time.")
-  m.addnote("(C) is CONFIDENTIAL")
+  #m = strzok_to_page(child_file, "2016-07-04T16:03:40+04:00", "And i talked to --Redacted--\n\nNo determination from State yet about whether they were classified at the time.\n\nBased on above, I think it reasonable to say we believe - emails with portions marked (C) in the bodies are classified (C) now and by extension (current classification and contemporaneous marking) were classified at the time.")
+  #m.addnote("(C) is CONFIDENTIAL")
   
   # Page 291
   # OUTBOX == Page
@@ -10490,7 +10730,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # Page 298
   # OUTBOX == Page
   # INBOX == Strzok
-  strzok_to_page(child_file, "2016-07-11T10:10:24+04:00", "Worried about work, I think. How much we decide to release, the prospect of second guessing. The IG doing that bugs me; Congress doing so infuriates me. --Redacted--")
+  #strzok_to_page(child_file, "2016-07-11T10:10:24+04:00", "Worried about work, I think. How much we decide to release, the prospect of second guessing. The IG doing that bugs me; Congress doing so infuriates me. --Redacted--")
   page_to_strzok(child_file, "2016-07-11T12:01:33+04:00", "Hey just remembered --Redacted-- won't be in this morning --Redacted--")
   strzok_to_page(child_file, "2016-07-11T12:21:36+04:00", "Oh well then. Saw our 3-4. If anything before then, I guess they can find me and Jon if needed")
   strzok_to_page(child_file, "2016-07-11T12:23:08+04:00", "Just brought --Redacted-- up to speed. How's traffic?")
@@ -10542,15 +10782,16 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-07-12T23:06:31+04:00", "--Redacted-- said he didnt know, that it was all second or third hand info, and that Toscas would know.\n\nI can call DC but that's stepping on WF's toes.")
   page_to_strzok(child_file, "2016-07-12T23:12:53+04:00", "Nope. No need.")
-  m = strzok_to_page(child_file, "2016-07-13T01:37:44+04:00", "--Redacted-- Though Andy moved MYE --Redacted--")
-  m.addnote("MYE - Midyear Exam (Hillary Clinton Classified Emails)")
+  #m = strzok_to_page(child_file, "2016-07-13T01:37:44+04:00", "--Redacted-- Though Andy moved MYE --Redacted--")
+  #m.addnote("MYE - Midyear Exam (Hillary Clinton Classified Emails)")
   m = page_to_strzok(child_file, "2016-07-13T01:39:48+04:00", "Yeah, I know re mye. I need to move it.")
   m.addnote("mye - Midyear Exam (Hillary Clinton Classified Emails)")
   page_to_strzok(child_file, "2016-07-13T10:03:28+04:00", "Hey was thinking, let me ask Baker what the meeting with Fine was about. It might be better not to get Jim deep in the facts of this yet since he sometimes takes overly cautious/conservative positions. That work?")
   strzok_to_page(child_file, "2016-07-13T18:53:08+04:00", "Disagreement about the 302s. General consensus of our group is ALL SESers are to be produced, plus notable private people.")
   page_to_strzok(child_file, "2016-07-13T18:55:29+04:00", "Ah. Yes, that sounds right.")
   page_to_strzok(child_file, "2016-07-13T19:07:47+04:00", "I missed Andy. Will try again after sac svtc.")
-  strzok_to_page(child_file, "2016-07-13T19:37:07+04:00", "Damn I missed the svtc. Several things for you, will call when people leave.\n\nAnd hi.")
+  m = strzok_to_page(child_file, "2016-07-13T19:37:07+04:00", "Damn I missed the svtc. Several things for you, will call when people leave.\n\nAnd hi.")
+  m.addnote("svtc - Secure Video Teleconference")
   page_to_strzok(child_file, "2016-07-13T19:38:16+04:00", "I'm waiting in Andy's ofc.")
   strzok_to_page(child_file, "2016-07-13T19:45:05+04:00", "Hey its going to take too long to type, along with DOJs reasoning why they want the changes. You have it on the secret side.")
   page_to_strzok(child_file, "2016-07-13T19:48:06+04:00", "Okay, will do. It's not like it needs to be decided today.")
@@ -10640,11 +10881,11 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # Page 304
   # OUTBOX == Page
   # INBOX == Strzok
-  m = page_to_strzok(child_file, "2016-07-19T02:23:29+04:00", "And wow, Donald Trump is an enormous d*uche.")
-  m.tag("Hatred", "douche is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
+  #m = page_to_strzok(child_file, "2016-07-19T02:23:29+04:00", "And wow, Donald Trump is an enormous d*uche.")
+  #m.tag("Hatred", "douche is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
   #m = strzok_to_page(child_file, "2016-07-19T10:16:23+04:00", "Hi. How was Trump, other than a douche? Melania? --Redacted--")
   #m.tag("Hatred", "douche is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
-  page_to_strzok(child_file, "2016-07-19T10:18:31+04:00", "Trump barely spoke, but the first thing out of his mouth was \"we're going to win soooo big.\" The whole thing is like living in a bad dream.")
+  #page_to_strzok(child_file, "2016-07-19T10:18:31+04:00", "Trump barely spoke, but the first thing out of his mouth was \"we're going to win soooo big.\" The whole thing is like living in a bad dream.")
   strzok_to_page(child_file, "2016-07-19T10:19:41+04:00", "Jesus")
   #page_to_strzok(child_file, "2016-07-19T10:20:06+04:00", "Melania was perfectly fine, except the whole point of the spouse talking is to reveal those peesonal stories, what a kind human the candidate is. There was none of that.")
   strzok_to_page(child_file, "2016-07-19T10:20:38+04:00", "--Redacted--")
@@ -10846,10 +11087,10 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-07-25T17:01:16+04:00", "Hey having a quick meeting with Bill --Redacted--")
   strzok_to_page(child_file, "2016-07-25T22:49:39+04:00", "Talking to Bill, want to catch up with you later. \U0001f615")
   strzok_to_page(child_file, "2016-07-25T23:44:38+04:00", "Leave = jeh, not Andy's office, right?")
-  m = page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "--Redacted-- now about to read mye letter while I listen to Corey booker. He's doing very well.")
-  m.addnote("mye - Midyear Exam (Hillary Clinton)")
+  #m = page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "--Redacted-- now about to read mye letter while I listen to Corey booker. He's doing very well.")
+  #m.addnote("mye - Midyear Exam (Hillary Clinton)")
   page_to_strzok(child_file, "2016-07-26T01:52:02+04:00", "Hey, in case you haven't already, can you answer Jim's question re --Redacted--")
-  strzok_to_page(child_file, "2016-07-26T01:52:21+04:00", "--Redacted-- letter? I thought Bakers comments were ok\n\nIt's amazing to me how much better this convention is. --Redacted--")
+  #strzok_to_page(child_file, "2016-07-26T01:52:21+04:00", "--Redacted-- letter? I thought Bakers comments were ok\n\nIt's amazing to me how much better this convention is. --Redacted--")
   strzok_to_page(child_file, "2016-07-26T01:52:30+04:00", "Which one --Redacted--")
   strzok_to_page(child_file, "2016-07-26T01:55:25+04:00", "Btw, any more discussion about JB not joining the call with --Redacted-- tomorrow?")
   page_to_strzok(child_file, "2016-07-26T02:03:00+04:00", "It's SO much more positive.")
@@ -11113,7 +11354,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-07-31T23:31:03+04:00", "Other way around. --Redacted--")
   page_to_strzok(child_file, "2016-07-31T23:31:11+04:00", "Oh please. I will find that out right quick. This is all about whether you want to make it easy on yourself.")
   page_to_strzok(child_file, "2016-07-31T23:31:17+04:00", "Ha. Thanks.")
-  page_to_strzok(child_file, "2016-07-31T23:39:02+04:00", "--Redacted-- This makes me very angry.\n\nDonald Trump\u2019s Confrontation With Muslim Soldier\u2019s Parents Emerges as Unexpected Flash Point http://nyti.ms/2aEwvgz")
+  #page_to_strzok(child_file, "2016-07-31T23:39:02+04:00", "--Redacted-- This makes me very angry.\n\nDonald Trump\u2019s Confrontation With Muslim Soldier\u2019s Parents Emerges as Unexpected Flash Point http://nyti.ms/2aEwvgz")
   strzok_to_page(child_file, "2016-07-31T23:41:10+04:00", "Yeah I'm furious about it. Interwebs are on fire. --Redacted--")
   #page_to_strzok(child_file, "2016-08-01T01:38:23+04:00", "I mean seriously. What in the hell is this guy talking about?\n\nDonald Trump Gives Questionable Explanation of Events in Ukraine http://nyti.ms/2arMCyV")
   page_to_strzok(child_file, "2016-08-01T01:58:10+04:00", "How Paul Manafort Wielded Power in Ukraine Before Advising Donald Trump http://nyti.ms/2aFy026")
@@ -11292,8 +11533,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-08-05T00:53:29+04:00", "And so you know, I value your advice. Letting the meeting tomorrow go, and rescheduling the one tomorrow so Jon can be there, and also not play into agency's bs game")
-  m = page_to_strzok(child_file, "2016-08-05T11:28:23+04:00", "--Redacted-- You can. If you need a day, take a day. I can pickup the mye stuff, nothing else is that pressing.")
-  m.addnote("mye - Midyear Exam (Hillary Clinton)")
+  #m = page_to_strzok(child_file, "2016-08-05T11:28:23+04:00", "--Redacted-- You can. If you need a day, take a day. I can pickup the mye stuff, nothing else is that pressing.")
+  #m.addnote("mye - Midyear Exam (Hillary Clinton)")
   m = strzok_to_page(child_file, "2016-08-05T11:29:44+04:00", "That's not true. There's the meeting with my team, the meeting at the agency (looks like Jon can go, not sure where the notion of a schedule conflict came from), mye, everything else in my Section, acting DAD.\n\n--Redacted--")
   m.addnote("MYE - Midyear Exam (Hillary Clinton)")
   #strzok_to_page(child_file, "2016-08-05T14:09:05+04:00", "Have M w f meetings with --Redacted-- at 9 like we did with mye.\n\nNeed to tall to you about Bill")
@@ -11530,7 +11771,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-08-13T13:11:55+04:00", "There's no debate. I'm going to forward to kortan. God, makes me want to tell state to go f it.")
   strzok_to_page(child_file, "2016-08-13T13:14:29+04:00", "Yep! You think we should have commented, if only to rebut States \"expectation of interagency coordination\" crap?")
   strzok_to_page(child_file, "2016-08-13T13:22:29+04:00", "--Redacted-- And yeah, States BS just makes me want to include those additional 302s. But that's just vindictiveness talking.")
-  page_to_strzok(child_file, "2016-08-14T01:13:27+04:00", "But see, this article so rings true that then I think the --Redacted-- Inside the Failing Mission to Save Donald Trump From Himself http://nyti.ms/2b5WSNA")
+  #page_to_strzok(child_file, "2016-08-14T01:13:27+04:00", "But see, this article so rings true that then I think the --Redacted-- Inside the Failing Mission to Save Donald Trump From Himself http://nyti.ms/2b5WSNA")
   page_to_strzok(child_file, "2016-08-14T10:35:59+04:00", "This was very interesting.\n\nThe Decline of Unions and the Rise of Trump http://nyti.ms/2bc7a1U")
   page_to_strzok(child_file, "2016-08-14T10:41:11+04:00", "God this makes me so angry.\n\nDonald Trump Is Making America Meaner http://nyti.ms/2b6gG38")
   strzok_to_page(child_file, "2016-08-14T10:57:57+04:00", "I'm not!\U0001f636\n\nIsaw but didn't read the first article.")
@@ -12668,10 +12909,10 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-25T21:04:46+04:00", "Talking to him now. They're on the S side, with less detail.")
   strzok_to_page(child_file, "2016-09-25T21:22:22+04:00", "Well, it's not bad. THey feel compelled to add/adjust things in our section, which is irritating (much more so to Jon than me). \U0001f612 But we should have something tonight.\n\nFinally, it's A PAGE AND A HALF. Jon and I were laughing the two of us could probably do that in 40 minutes...")
   page_to_strzok(child_file, "2016-09-26T00:21:27+04:00", "Note the BCC. I'm inclined to say no.")
-  m = strzok_to_page(child_file, "2016-09-26T00:36:38+04:00", "And def i would not send our (CD) stuff. I got the impression from Andy there was some question if the D would want to use the --Redacted-- info into the PC.\n\nI need to make sure CYD knows not to send it far and wide. I can see them messing that up.\n\nAnd if the background - that the community is saying it's all our fault and waiting for us, I wouldn't want to play into that in unexpected ways.")
-  m.addnote("CD - FBI Counterintelligence Division")
-  m.addnote("CYD - FBI Cyber Division")
-  m.addnote("D - Director FBI")
+  #m = strzok_to_page(child_file, "2016-09-26T00:36:38+04:00", "And def i would not send our (CD) stuff. I got the impression from Andy there was some question if the D would want to use the --Redacted-- info into the PC.\n\nI need to make sure CYD knows not to send it far and wide. I can see them messing that up.\n\nAnd if the background - that the community is saying it's all our fault and waiting for us, I wouldn't want to play into that in unexpected ways.")
+  #m.addnote("CD - FBI Counterintelligence Division")
+  #m.addnote("CYD - FBI Cyber Division")
+  #m.addnote("D - Director FBI")
 
   page_to_strzok(child_file, "2016-09-26T00:45:59+04:00", "I would email sporre tonight so that he knows to limit distribution.")
 
@@ -12812,8 +13053,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-28T23:34:14+04:00", "Tell me.....")
   strzok_to_page(child_file, "2016-09-28T23:51:57+04:00", "--Redacted--")
   page_to_strzok(child_file, "2016-09-29T01:08:50+04:00", "And suddenly I'm realizing, they're like Trump demographic people, just democrats.\U0001f612")
-  m = strzok_to_page(child_file, "2016-09-29T01:10:29+04:00", "--Redacted-- I need to send you what my --Redacted-- has been sending. The liberal media is all in the tank for Hillary. Because, you know, Trump isn't batsh*t crazy for our country...")
-  m.tag("Hatred", "batshit crazy is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
+  #m = strzok_to_page(child_file, "2016-09-29T01:10:29+04:00", "--Redacted-- I need to send you what my --Redacted-- has been sending. The liberal media is all in the tank for Hillary. Because, you know, Trump isn't batsh*t crazy for our country...")
+  #m.tag("Hatred", "batshit crazy is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
 
   # Page 391
   # OUTBOX == Page
@@ -12832,7 +13073,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-29T23:46:34+04:00", "Hey I honestly did not know the specific reason for the concern, other than what I told you. Thats why I was answering as I did, to see if he'd provide more detail.")
   strzok_to_page(child_file, "2016-09-29T23:46:58+04:00", "It was a convo between him, Jim and Kortan....")
   strzok_to_page(child_file, "2016-09-29T23:49:58+04:00", "You also left your --Redacted-- update. Let me know when, I'll bring it up before you go. \U0001f636")
-  strzok_to_page(child_file, "2016-09-30T01:42:15+04:00", "Hey I'm almost home, sorry. Remind me tomorrow what --Redacted-- said.")
+  #strzok_to_page(child_file, "2016-09-30T01:42:15+04:00", "Hey I'm almost home, sorry. Remind me tomorrow what --Redacted-- said.")
   strzok_to_page(child_file, "2016-09-30T11:16:33+04:00", "And do you still have that O'Reilly article about the D? I can't find it")
   page_to_strzok(child_file, "2016-09-30T11:31:00+04:00", "--Redacted-- Wasn't an article, was Jason telling me that O'Reilly was critical.")
   
@@ -13080,7 +13321,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-12T10:08:33+04:00", "And \U0001f621\nhttp://mobile.nytimes.com/2016/10/12/us/politics/donald-trump-voters.html")
   strzok_to_page(child_file, "2016-10-12T14:47:50+04:00", "--Redacted-- Hi. Done. You at your desk?")
   strzok_to_page(child_file, "2016-10-12T21:37:22+04:00", "Nice. Talked to Laycock and Josh still in wrap....")
-  strzok_to_page(child_file, "2016-10-13T02:49:40+04:00", "To check email. We got the reporting on Sept 19. Looks like --Redacted-- got it early August.\n\nLooking at --Redacted-- lync replies to me it's not clear if he knows if/when he told them. But --Redacted-- and --Redacted-- talked with --Redacted-- they're both good and will remember.\n\nIt's not about rubbing their nose in it. I don't care if they don't know. I just want to know who's playing games/scared covering.\n\nI totally get it will never be provable.")
+  #strzok_to_page(child_file, "2016-10-13T02:49:40+04:00", "To check email. We got the reporting on Sept 19. Looks like --Redacted-- got it early August.\n\nLooking at --Redacted-- lync replies to me it's not clear if he knows if/when he told them. But --Redacted-- and --Redacted-- talked with --Redacted-- they're both good and will remember.\n\nIt's not about rubbing their nose in it. I don't care if they don't know. I just want to know who's playing games/scared covering.\n\nI totally get it will never be provable.")
   strzok_to_page(child_file, "2016-10-13T02:54:25+04:00", "Aaaaand I left my badge in the card reader. Can't get back in, so get in extra early for temp badge tomorrow \U0001f621")
   strzok_to_page(child_file, "2016-10-13T15:44:08+04:00", "30 sec\n\nRan into --Redacted--")
   page_to_strzok(child_file, "2016-10-13T23:18:41+04:00", "--Redacted--")
@@ -13354,8 +13595,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-10-20T20:42:35+04:00", "And hey can we talk on the 302 stuff? Bill has me doing a bunch of stuff that may be duplicative of what you may have asked --Redacted-- And /or I can get him to provide the data to Bill. Thanks")
-  m = strzok_to_page(child_file, "2016-10-20T22:34:52+04:00", "--Redacted-- Reading the 302 attachment I mentioned earlier. Yeah its a bit nflammatory, but nothing more than what's already apparent. And drags in Rybicki, Biuliano and Giacalone (none in a bad way)")
-  m.addnote("Giacalone is John Giacalone FBI Assistant Director of Counterterrorism Division")
+  #m = strzok_to_page(child_file, "2016-10-20T22:34:52+04:00", "--Redacted-- Reading the 302 attachment I mentioned earlier. Yeah its a bit nflammatory, but nothing more than what's already apparent. And drags in Rybicki, Biuliano and Giacalone (none in a bad way)")
+  #m.addnote("Giacalone is John Giacalone FBI Assistant Director of Counterterrorism Division")
   strzok_to_page(child_file, "2016-10-20T22:48:11+04:00", "Also makes me certain that we need to go through the whole damn file. I'm happy to help.")
   page_to_strzok(child_file, "2016-10-20T22:59:33+04:00", "Please have someone make one big binder of all the material. We'll split it up.")
   strzok_to_page(child_file, "2016-10-20T23:07:29+04:00", "Will do. Whole case, starting with 302s? --Redacted--")
@@ -13691,7 +13932,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-30T19:30:47+04:00", "Sorry, utterly terrible day. I'm not sure I can identify one single redeeming thing about it.") 
   # strzok_to_page(child_file, "2016-10-30T19:49:27+04:00", "Oh god --Redacted-- I'm sorry\n\nTalked to Bill he's leaning not telling Bill,he was going to call Baker. We need that Kortan info go to weigh in the decision.")
   strzok_to_page(child_file, "2016-10-30T20:39:03+04:00", "Oh God. I'm sorry. Stupid f*cking election.")
-  strzok_to_page(child_file, "2016-10-30T21:13:57+04:00", "--Redacted--")
+  #strzok_to_page(child_file, "2016-10-30T21:13:57+04:00", "--Redacted--")
   page_to_strzok(child_file, "2016-10-30T21:14:45+04:00", "The bureau honestly doesn't deserve us.")
 
   # Page 426
@@ -14117,7 +14358,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-16T19:58:15+05:00", "--Redacted--")
   strzok_to_page(child_file, "2016-11-16T21:27:29+05:00", "You, your age, plans after Andy goes, how to keep talent in the Bu.")
   page_to_strzok(child_file, "2016-11-17T09:27:46+05:00", "God, this is scary. He apparently has not reached out to state at all for briefing materials. \U0001f612\n\nNYTimes: How Shinzo Abe Will Try to Size Up Donald Trump\nHow Shinzo Abe Will Try to Size Up Donald Trump http://nyti.ms/2elhGjP")
-  strzok_to_page(child_file, "2016-11-17T09:33:36+05:00", "Yep. And the reason he wanted clearances for the kids is so Jared Kushner could receive the PDB with him. Legally, I think he can pretty much designate whoever he wants to receive it without clearance..")
+  m = strzok_to_page(child_file, "2016-11-17T09:33:36+05:00", "Yep. And the reason he wanted clearances for the kids is so Jared Kushner could receive the PDB with him. Legally, I think he can pretty much designate whoever he wants to receive it without clearance..")
+  m.addnote("PDB - Presidential Daily Brief")
   page_to_strzok(child_file, "2016-11-17T09:34:27+05:00", "Article today is saying none of that is going to happen.")
   strzok_to_page(child_file, "2016-11-17T09:35:46+05:00", "I know he backed off of clearances, but there was another legal piece looking at his authority to just grant access, and it's pretty broad.\n\nAnd, I don't think he has any idea what he's doing from one day to the next.")
   page_to_strzok(child_file, "2016-11-17T09:35:52+05:00", "It's is broad. He doesn't. And yes.")
@@ -14141,7 +14383,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-11-17T19:54:54+05:00", "Oh. No you cant. WAH-wah.")
   page_to_strzok(child_file, "2016-11-18T01:12:18+05:00", "Ha. This gave me a chuckle.\n\nNYTimes: A Trumpian Silver Lining\n\nA Trumpian Silver Lining http://nyti.ms/2f37625")
   strzok_to_page(child_file, "2016-11-18T01:47:35+05:00", "Nope. Fixed it. Fly Tues, arr Wed. Meet Thurs and Fri. Fly back Sat. All that assuming the other side can do those dates.")
-  strzok_to_page(child_file, "2016-11-18T11:18:07+05:00", "--Redacted-- Was just reading NYT. Apparently Mike Rogers has been to NY to visit Trump")
+  #strzok_to_page(child_file, "2016-11-18T11:18:07+05:00", "--Redacted-- Was just reading NYT. Apparently Mike Rogers has been to NY to visit Trump")
   strzok_to_page(child_file, "2016-11-18T12:40:45+05:00", "Sessions for AG")
   page_to_strzok(child_file, "2016-11-18T12:49:19+05:00", "Good god.")
   strzok_to_page(child_file, "2016-11-18T21:22:11+05:00", "Disagree with Bill on last topic")
@@ -14568,7 +14810,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2017-05-19T23:42:10+04:00", "Will explain why later. He thinks --Redacted--")
   strzok_to_page(child_file, "2017-05-19T23:42:10+04:00", "Bill threw out --Redacted-- I was real excited.")
   page_to_strzok(child_file, "2017-05-19T23:44:16+04:00", "Nope. Me neither. No strategic thinking.")
-  strzok_to_page(child_file, "2017-05-19T23:44:18+04:00", "Well that's just dumb. He heard Director Comey's statement about what we're trying to achieve, right?\n\nAnyway. Try to not swell on all this.\n\nGetting stuff ready to go out the door...\n\n--Redacted-- \U0001f60a")
+  #strzok_to_page(child_file, "2017-05-19T23:44:18+04:00", "Well that's just dumb. He heard Director Comey's statement about what we're trying to achieve, right?\n\nAnyway. Try to not dwell on all this.\n\nGetting stuff ready to go out the door...\n\n--Redacted-- \U0001f60a")
   page_to_strzok(child_file, "2017-05-19T23:47:39+04:00", "--Redacted-- said, immediately, that sounds like an offer you must accept. He wants me to.")
   strzok_to_page(child_file, "2017-05-19T23:48:29+04:00", "That's really good! Im glad. That from him must be a relief for you, right?")
   strzok_to_page(child_file, "2017-05-19T23:48:45+04:00", "I REALLY like your 30 day idea.")
@@ -15122,7 +15364,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2017-06-07T00:18:21+04:00", "A word missing \"better\"?")
   strzok_to_page(child_file, "2017-06-07T00:26:36+04:00", "Finally leaving. I hope you're not still at work....")
   page_to_strzok(child_file, "2017-06-07T00:27:16+04:00", "Nope. I left at 7. Of course I ran tino --Redacted-- when he was leaving. At 5:30.")
-  strzok_to_page(child_file, "2017-06-07T02:31:24+04:00", "--Redacted-- \U0001f60a\U0001f60a\nC) I have no idea who the two agents are --Redacted-- asked for. They're not associated with the team and I may need to say \"no.\" I'll do research and talk with her but I worry they're NY, in the same way Andrew worried about NY agents. And he had the sense to talk to me about what he wanted, and balance his request against those already on the team.\nD) curious comment Andrew made as I stepped out, prompting your 20 year agent comment. My sense was he wasn't necessarily happy.")
+  #strzok_to_page(child_file, "2017-06-07T02:31:24+04:00", "--Redacted-- \U0001f60a\U0001f60a\nC) I have no idea who the two agents are --Redacted-- asked for. They're not associated with the team and I may need to say \"no.\" I'll do research and talk with her but I worry they're NY, in the same way Andrew worried about NY agents. And he had the sense to talk to me about what he wanted, and balance his request against those already on the team.\nD) curious comment Andrew made as I stepped out, prompting your 20 year agent comment. My sense was he wasn't necessarily happy.")
   page_to_strzok(child_file, "2017-06-07T09:59:50+04:00", "--Redacted-- C) So just sit down and talk to her honestly about it. It's okay to say no, especially since that subject NEEDS a strong CI look as well.\nD) Jesus, relax about the comment. Andrew had been making fun of himself, you stepped out to make a call, Andrew said on no, I've scared him. I said you're a 20 year agent, you're fine. It was all a joke. That's it.")
   page_to_strzok(child_file, "2017-06-07T10:43:06+04:00", "C) Been thinking. Let me prep the battlefield with --Redacted-- first, like I did with Andrew.")
   page_to_strzok(child_file, "2017-06-07T10:43:42+04:00", "Who you are, why she can trust you, considerations to think about.")
@@ -15145,8 +15387,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # strzok_to_page(child_file, "2017-06-07T10:55:27+04:00", "And I've gotta say I'm a little bummed abour Dir C testimony. Is what it is.")
   # page_to_strzok(child_file, "2017-06-07T10:56:24+04:00", "Yup, it's fine.")
   page_to_strzok(child_file, "2017-06-07T10:57:12+04:00", "They don't want to make it a big scene viewing, which I get, but would be understood. So --Redacted-- and I had already discussed.")
-  m = strzok_to_page(child_file, "2017-06-07T11:31:51+04:00", "I get, re --Redacted-- it's going to be emotional for all of us.\n\nI'm disappointed because i see a solid, unbroken line from mye to announcement to --Redacted-- to election to momentous this --Redacted--")
-  m.addnote("mye - Midyear Exam (Hillary Clinton)")
+  #m = strzok_to_page(child_file, "2017-06-07T11:31:51+04:00", "I get, re --Redacted-- it's going to be emotional for all of us.\n\nI'm disappointed because i see a solid, unbroken line from mye to announcement to --Redacted-- to election to momentous this --Redacted--")
+  #m.addnote("mye - Midyear Exam (Hillary Clinton)")
   page_to_strzok(child_file, "2017-06-07T11:34:56+04:00", "--Redacted--")
   page_to_strzok(child_file, "2017-06-07T11:35:19+04:00", "--Redacted--")
   strzok_to_page(child_file, "2017-06-07T11:54:32+04:00", "--Redacted--")
@@ -15425,7 +15667,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2017-06-15T11:24:51+04:00", "Hey. See Aaron's email. My guess is that is intended to exclude me, but let's discuss before you say anything.")
   strzok_to_page(child_file, "2017-06-15T11:33:12+04:00", "I didn't see you on the cc line (thanks Samsung\U0001f612) and already told Aaron I would right now. I'll hedge in the wording and say there me be adds/drops.\n\nI'm sure this came about in the discussion I had the door closed in my face \U0001f621")
   # page_to_strzok(child_file, "2017-06-15T11:35:30+04:00", "Or because of the nyt story saying that SC seems to be pursuing potus in light of these interviews.")
-  strzok_to_page(child_file, "2017-06-15T11:42:22+04:00", "Wp had it first. And it's as likely to be --Redacted-- leaking. All of which I would have walked through, if I had been in the room. Because, you know, media leaks is what I do for a living.")
+  #strzok_to_page(child_file, "2017-06-15T11:42:22+04:00", "Wp had it first. And it's as likely to be --Redacted-- leaking. All of which I would have walked through, if I had been in the room. Because, you know, media leaks is what I do for a living.")
 
   # Page 495
   # OUTBOX == Page
@@ -15450,8 +15692,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2017-06-15T23:12:23+04:00", "--Redacted-- Calling Aaron now if you want to stop by")
   strzok_to_page(child_file, "2017-06-15T23:12:25+04:00", "It's worse. ...")
   page_to_strzok(child_file, "2017-06-15T23:15:01+04:00", "I'm outside")
-  strzok_to_page(child_file, "2017-06-16T00:38:27+04:00", "God I'm so disappointed in us as an organization. I want to send 10 polygraphers to --Redacted-- and poly the whole office. Or do every, Single. Last. Employee.")
-  strzok_to_page(child_file, "2017-06-16T00:42:36+04:00", "Because the thing this one is we're SO bad that no one down here (or a couple of people in CID) knew. So you could literally just do the field office.")
+  #strzok_to_page(child_file, "2017-06-16T00:38:27+04:00", "God I'm so disappointed in us as an organization. I want to send 10 polygraphers to --Redacted-- and poly the whole office. Or do every, Single. Last. Employee.")
+  strzok_to_page(child_file, "2017-06-16T00:42:36+04:00", "Because the thing with this one is we're SO bad that no one down here (or a couple of people in CID) knew. So you could literally just do the field office.")
   page_to_strzok(child_file, "2017-06-16T00:47:58+04:00", "So f it, let's do it.")
   strzok_to_page(child_file, "2017-06-16T00:50:32+04:00", "Have the A/DD pull the trigger....")
   page_to_strzok(child_file, "2017-06-16T00:51:17+04:00", "Yeah well I hold no sway over that guy.")
@@ -16666,6 +16908,46 @@ def page_to_strzok_unix_epoch(parent_file: truxton.TruxtonChildFileIO, sent: int
   add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
   return communication
 
+def page_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Page to Unknown: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Page to Unknown: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
+def unknown_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Page: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Unknown to Page: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
 def unknown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
   communication = parent_file.newcommunication()
   communication.sent = datetime.fromisoformat(sent)
@@ -17581,6 +17863,29 @@ def lync_strzok_to_pientka(parent_file: truxton.TruxtonChildFileIO, sent: str, s
 
   event_time = communication.sent
   event_title = entitle("Strzok to Pientka: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_pientka(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Pientka: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Pientka: " + subject)
 
   add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
 
@@ -19032,7 +19337,8 @@ def add_grassley_submission(parent_file: truxton.TruxtonChildFileIO) -> None:
   lync_strzok_to_page( child_file, "2016-07-21T12:22:33+04:00", "Does this strike you as odd? I mean, he KNOWS the case, right? --Redacted-- 5:17 PM Hi Pete, EAD Coleman is asking for the MYE talking points in advance of a trip to Dallas FO. Just checking to see if you were able to satisfy Baker's questions re: the fact-based examples. I will also ping you on UNET (sorry to stalk you)" )
   lync_unknown_to_strzok( child_file, "2016-07-21T13:19:29+04:00", "I got them from a NY Times article I found on Google that described the charges and the guilty plea - also Priestap sent an email to the EAD, which I can forward to you.")
   lync_unknown_to_strzok( child_file, "2016-07-21T19:27:50+04:00", "are you all having the MYE review tomorrow?")
-  lync_unknown_to_strzok( child_file, "2016-07-25T15:47:34+04:00", "do we need the MYE meeting today @ 1")
+  m = lync_unknown_to_strzok( child_file, "2016-07-25T15:47:34+04:00", "do we need the MYE meeting today @ 1")
+  m.addnote("MYE - Midyear Exam (Hillary Clinton)")
   lync_unknown_to_strzok( child_file, "2016-07-27T20:00:26+04:00", "Pete - Lisa Page sent an email to Bill requesting immediate revioew of the MYE Congress response as she is trying to get it out tonight. There were apparently some revisions. Bill may want to know you review and are good or not with language.")
   lync_strzok_to_unknown( child_file, "2016-07-27T20:01:06+04:00", "Id did, we worked on it together. There is an issue of granularity at one point but she has flagged and i agree with her comment." )
   lync_unknown_to_strzok( child_file, "2016-07-27T21:08:32+04:00", "just closing loop... i talked to Bill about the MYE paper. He was fine with you taking the lead. I saw you email to that effect directored to Lisa plus.")
