@@ -107,6 +107,43 @@ SUBJECT_ID_STEINBACH    = "BD5C2F33-6990-C3A0-BA4E-82E5B6D212B4"
 SUBJECT_ID_MOYER        = "315124D0-8BF5-8274-A872-F13D6D043305"
 SUBJECT_ID_VARACALLI    = "30C990BF-5F3C-CCB6-BE81-DC3809D2A0FF"
 
+# defined constants
+EVENT_TYPE_CAMPAIGN = 20000
+EVENT_TYPE_FBI = 20001
+EVENT_TYPE_CIA = 20002
+EVENT_TYPE_DNI = 20003
+EVENT_TYPE_WIKILEAKS = 20004
+EVENT_TYPE_MUELLER = 20005
+EVENT_TYPE_STRZOK_PAGE_MESSAGE = 20006
+EVENT_TYPE_MIFSUD = 20007
+EVENT_TYPE_STEELE = 20008
+EVENT_TYPE_FISA = 20009
+EVENT_TYPE_DOWNER = 20010
+EVENT_TYPE_RICE = 20011
+EVENT_TYPE_POWER = 20012
+EVENT_TYPE_GCHQ = 20013
+EVENT_TYPE_NSA = 20014
+EVENT_TYPE_OBAMA = 20015
+EVENT_TYPE_UNMASK = 20016
+EVENT_TYPE_DOJ = 20017
+EVENT_TYPE_FLYNN = 20018
+EVENT_TYPE_HILLARY = 20019
+EVENT_TYPE_DANCHENKO = 20020
+EVENT_TYPE_MCCABE_PAGE_MESSAGE = 20021
+EVENT_TYPE_FBI_ANALYST_MESSAGE = 20022
+EVENT_TYPE_LYNC_MESSAGE = 20023
+
+MCCABE_PHONE_NUMBER   = "2025551111"
+STRZOK_PHONE_NUMBER   = "2025552222"
+PAGE_PHONE_NUMBER     = "2025553333"
+UNKNOWN_FBI_ANALYST   = "2025554444"
+FBI_ANALYST_CHAT      = "2025555555"
+MARGOLIN_PHONE_NUMBER = "2025559000"
+SMITH_PHONE_NUMBER    = "2025559001"
+APUZZO_PHONE_NUMBER   = "2025559002"
+JEREMY_PHONE_NUMBER   = "+447713089895"
+RAMADAN_PHONE_NUMBER  = "7035559003"
+
 def main() -> None:
   head_and_tail = os.path.split(os.path.realpath(__file__))
   
@@ -239,6 +276,261 @@ def main() -> None:
   # We are done!
   print("Finished")
   return None
+  
+# Utilitiy Functions
+
+def set_primary_photo(parent_file: truxton.TruxtonChildFileIO, subject: truxton.TruxtonSubject, filename: str) -> None:
+  child_file = add_file(parent_file, filename)
+  relation = child_file.newrelation()
+  relation.a = child_file.id
+  relation.atype = truxton.OBJECT_TYPE_FILE
+  relation.b = subject.id
+  relation.btype = truxton.OBJECT_TYPE_SUSPECT
+  relation.relation = truxton.RELATION_PRIMARY_PHOTO
+  relation.save()
+  return None
+
+# Utility Functions
+def unix_millisecond_epoch_to_ticks(unix_epoch: int) -> int:
+  NUMBER_OF_FILETIME_TICKS_IN_ONE_SECOND = 10000
+  FILETIME_OF_1970_01_01 = 116444736000000000
+  return FILETIME_OF_1970_01_01 + (unix_epoch * NUMBER_OF_FILETIME_TICKS_IN_ONE_SECOND)
+
+def date_to_filetime(dt: datetime) -> int:
+  return unix_millisecond_epoch_to_ticks(timegm(dt.timetuple()) * 1000)
+
+def ticks(iso8601: str) -> int:
+  return date_to_filetime(datetime.fromisoformat(iso8601))
+  
+def filetime_to_datetime(filetime: int) -> datetime:
+  delta = timedelta(seconds = filetime/10000000)
+  value = datetime( 1601, 1, 1 ) + delta
+  return value.replace(tzinfo=timezone.utc)
+
+def unix_millisecond_epoch_to_est_datetime(unix_epoch: int) -> datetime:
+  utc_time = filetime_to_datetime(unix_millisecond_epoch_to_ticks(unix_epoch))
+  est_timezone = zoneinfo.ZoneInfo('America/New_York')
+  est_time = utc_time.astimezone(est_timezone)
+  tzs = est_time.strftime('%:z')
+  
+  cc = ""
+  
+  if tzs == "-04:00":
+    cc = est_time.strftime('%Y-%m-%dT%H:%M:%S+04:00')
+  elif tzs == "-05:00":
+    cc = est_time.strftime('%Y-%m-%dT%H:%M:%S+05:00')
+  else:
+    cc = est_time.strftime('%Y-%m-%dT%H:%M:%S%:z')
+      
+  cc = est_time.strftime('%Y-%m-%dT%H:%M:%S-00:00')
+  return datetime.fromisoformat(cc)
+
+def b64(filename: str) -> str:
+  if os.path.isfile(filename):
+    with open( filename, "rb" ) as input_file:
+      data = input_file.read()
+      # It is suprisingly difficult to get a base64 string
+      # b64encode returns a byte array. Converting that to a string with str()
+      # adds crap to the string. We need to strip off the "b'" at the beginning
+      # and the ' at the end.
+      return str(base64.b64encode(data))[2:-1] 
+  return("=")
+
+def create_event_type(t: truxton.TruxtonObject, id: int, name: str) -> None:
+  event_type = t.neweventtype()
+  event_type.id = id
+  event_type.name = name
+  event_type.save()
+  return None
+
+def create_artifact_type(t: truxton.TruxtonObject, id: int, shortname: str, longname: str) -> None:
+  artifact_type = t.newartifacttype()
+  artifact_type.id = id
+  artifact_type.shortname = shortname
+  artifact_type.longname = longname
+  artifact_type.save()
+  return None
+
+def add_file(parent_truxton_file: truxton.TruxtonChildFileIO, filename: str) -> truxton.TruxtonChildFileIO:
+  child = parent_truxton_file.newchild()
+
+  if os.path.isfile(filename):
+    with open(filename, "rb") as source_file:
+      child.name = Path(filename).name
+      shutil.copyfileobj(source_file, child)
+  else:
+    child.name = filename
+
+  child.save()
+  return child
+
+def add_event(parent_file: truxton.TruxtonChildFileIO, start: str, end: str, title: str, description: str, type: int) -> truxton.TruxtonEvent:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  event = parent_file.newevent()
+  assert isinstance(event, truxton.TruxtonEvent)
+  event.start = datetime.fromisoformat(start)
+  event.end = datetime.fromisoformat(end)
+  event.title = title
+  event.description = description
+  event.type = type
+  event.save()
+  return event
+
+def add_group(child_file: truxton.TruxtonChildFileIO, name: str) -> truxton.TruxtonArtifact:
+  group = child_file.newartifact()
+  group.type = truxton.ENTITY_TYPE_GROUP
+  group.value = name
+  group.datatype = truxton.DATA_TYPE_ASCII
+  group.length = len(group.value)
+  group.save()
+  return group
+
+def add_name_and_email(child_file: truxton.TruxtonChildFileIO, name: str, email: str) -> None:
+  person = child_file.newartifact()
+  person.type = truxton.ENTITY_TYPE_PERSON
+  person.value = name
+  person.datatype = truxton.DATA_TYPE_ASCII
+  person.length = len(person.value)
+  person.save()
+  
+  email_address = child_file.newartifact()
+  email_address.type = truxton.ENTITY_TYPE_EMAIL_ADDRESS
+  email_address.value = email
+  email_address.datatype = truxton.DATA_TYPE_ASCII
+  email_address.length = len(email_address.value)
+  email_address.save()
+  
+  relation = child_file.newrelation()
+  relation.a = email_address.id
+  relation.atype = truxton.OBJECT_TYPE_ENTITY
+  relation.b = person.id
+  relation.btype = truxton.OBJECT_TYPE_ENTITY
+  relation.relation = truxton.RELATION_MESSAGE_ADDRESS
+  relation.save()
+  return None
+  
+def add_name_subject_and_email(child_file: truxton.TruxtonChildFileIO, name: str, subject_id: str, email: str) -> None:
+  person = child_file.newartifact()
+  person.type = truxton.ENTITY_TYPE_PERSON
+  person.value = name
+  person.datatype = truxton.DATA_TYPE_ASCII
+  person.length = len(person.value)
+  person.save()
+  
+  email_address_artifact = child_file.newartifact()
+  email_address_artifact.type = truxton.ENTITY_TYPE_EMAIL_ADDRESS
+  email_address_artifact.value = email
+  email_address_artifact.datatype = truxton.DATA_TYPE_ASCII
+  email_address_artifact.length = len(email_address_artifact.value)
+  email_address_artifact.save()
+  
+  relation = child_file.newrelation()
+  relation.a = email_address_artifact.id
+  relation.atype = truxton.OBJECT_TYPE_ENTITY
+  relation.b = person.id
+  relation.btype = truxton.OBJECT_TYPE_ENTITY
+  relation.relation = truxton.RELATION_MESSAGE_ADDRESS
+  relation.save()
+
+  split_address = email.split('@')
+  
+  email_address = TRUXTON_OBJECT.newmessageaddress()
+  email_address.account = split_address[0]
+  email_address.server = split_address[1]
+  email_address.name = name
+  email_address.save()
+  
+  # YES! This is very wonky
+  # Swap the endianess 
+  bites = struct.pack('<Q', email_address.combinedid)
+  reversed_value = struct.unpack('>Q', bites)
+  combined_id_guid = "{0:16x}".format(reversed_value[0]) + "{0:16x}".format(reversed_value[0])
+  
+  relation = child_file.newrelation()
+  relation.a = combined_id_guid
+  relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
+  relation.b = person.id
+  relation.btype = truxton.OBJECT_TYPE_ENTITY
+  relation.relation = truxton.RELATION_COMBINED_ID
+  relation.save()
+
+  subject_relation = child_file.newrelation()
+  subject_relation.a = combined_id_guid
+  subject_relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
+  subject_relation.b = subject_id
+  subject_relation.btype = truxton.OBJECT_TYPE_SUSPECT
+  subject_relation.relation = truxton.RELATION_COMBINED_ID
+  subject_relation.save()
+
+  return None
+
+def add_name_subject_and_phone_number(child_file: truxton.TruxtonChildFileIO, name: str, subject_id: str, phone_number: str) -> None:
+  person = child_file.newartifact()
+  person.type = truxton.ENTITY_TYPE_PERSON
+  person.value = name
+  person.datatype = truxton.DATA_TYPE_ASCII
+  person.length = len(person.value)
+  person.save()
+  
+  phone_number_artifact = child_file.newartifact()
+  phone_number_artifact.type = truxton.ENTITY_TYPE_PHONE_NUMBER
+  phone_number_artifact.value = phone_number
+  phone_number_artifact.datatype = truxton.DATA_TYPE_ASCII
+  phone_number_artifact.length = len(phone_number_artifact.value)
+  phone_number_artifact.save()
+  
+  relation = child_file.newrelation()
+  relation.a = phone_number_artifact.id
+  relation.atype = truxton.OBJECT_TYPE_ENTITY
+  relation.b = person.id
+  relation.btype = truxton.OBJECT_TYPE_ENTITY
+  relation.relation = truxton.RELATION_WORK_PHONE
+  relation.save()
+
+  subject_relation = child_file.newrelation()
+  subject_relation.a = phone_number_artifact.id
+  subject_relation.atype = truxton.OBJECT_TYPE_ENTITY
+  subject_relation.b = subject_id
+  subject_relation.btype = truxton.OBJECT_TYPE_SUSPECT
+  subject_relation.relation = truxton.RELATION_WORK_PHONE
+  subject_relation.save()
+
+  return None
+
+def add_name_and_phone_number(child_file: truxton.TruxtonChildFileIO, name: str, phone_number: str) -> None:
+  person = child_file.newartifact()
+  person.type = truxton.ENTITY_TYPE_PERSON
+  person.value = name
+  person.datatype = truxton.DATA_TYPE_ASCII
+  person.length = len(person.value)
+  person.save()
+  
+  phone_number_artifact = child_file.newartifact()
+  phone_number_artifact.type = truxton.ENTITY_TYPE_PHONE_NUMBER
+  phone_number_artifact.value = phone_number
+  phone_number_artifact.datatype = truxton.DATA_TYPE_ASCII
+  phone_number_artifact.length = len(phone_number_artifact.value)
+  phone_number_artifact.save()
+  
+  relation = child_file.newrelation()
+  relation.a = phone_number_artifact.id
+  relation.atype = truxton.OBJECT_TYPE_ENTITY
+  relation.b = person.id
+  relation.btype = truxton.OBJECT_TYPE_ENTITY
+  relation.relation = truxton.RELATION_WORK_PHONE
+  relation.save()
+
+  return None
+
+def entitle(old_title: str) -> str:
+  event_title = old_title.replace("\r", " ").replace("\n", " ").replace("  ", " ")
+   
+  maximum_event_title_length = 50
+
+  if ( len(event_title) > maximum_event_title_length ):
+    event_title = event_title[0:maximum_event_title_length] + "..."
+
+  return event_title
 
 def initialize_types(t):
   # Create the things unique to our investigation
@@ -249,7 +541,7 @@ def initialize_types(t):
 
   return None
 
-def create_groups(f):
+def create_groups(f) -> None:
   global FBI_GROUP
   FBI_GROUP = add_group(f, "FBI")
 
@@ -261,7 +553,68 @@ def create_groups(f):
 def add_person_to_group(p, g):
   return None
 
-def create_investigation(t):
+def create_artifact_types(t: truxton.TruxtonObject) -> None:
+  create_artifact_type(t, 1101, "Leak", "A leak" )
+  return None
+
+def create_event_types(t: truxton.TruxtonObject) -> None:
+  create_event_type(t, EVENT_TYPE_CAMPAIGN, "Trump Campaign" )
+  create_event_type(t, EVENT_TYPE_FBI, "FBI Actions" )
+  create_event_type(t, EVENT_TYPE_CIA, "CIA Actions" )
+  create_event_type(t, EVENT_TYPE_DNI, "DNI Actions" )
+  create_event_type(t, EVENT_TYPE_WIKILEAKS, "Wikileaks Actions" )
+  create_event_type(t, EVENT_TYPE_MUELLER, "Mueller Actions" )
+  create_event_type(t, EVENT_TYPE_STRZOK_PAGE_MESSAGE, "Strzok Page Message" )
+  create_event_type(t, EVENT_TYPE_MIFSUD, "Mifsud Actions" )
+  create_event_type(t, EVENT_TYPE_STEELE, "Steele Report" )
+  create_event_type(t, EVENT_TYPE_FISA, "FISA/FISC" )
+  create_event_type(t, EVENT_TYPE_DOWNER, "Alexander Downer Actions" )
+  create_event_type(t, EVENT_TYPE_RICE, "Susan Rice Actions" )
+  create_event_type(t, EVENT_TYPE_POWER, "Samantha Power Actions" )
+  create_event_type(t, EVENT_TYPE_GCHQ, "GCHQ Actions" )
+  create_event_type(t, EVENT_TYPE_NSA, "NSA Actions" )
+  create_event_type(t, EVENT_TYPE_OBAMA, "Obama Actions" )
+  create_event_type(t, EVENT_TYPE_UNMASK, "Flynn Unmasking" )
+  create_event_type(t, EVENT_TYPE_DOJ, "DOJ Actions" )
+  create_event_type(t, EVENT_TYPE_FLYNN, "Flynn Actions" )
+  create_event_type(t, EVENT_TYPE_HILLARY, "Hillary Clinton Campaign" )
+  create_event_type(t, EVENT_TYPE_DANCHENKO, "Danchenko" )
+  create_event_type(t, EVENT_TYPE_MCCABE_PAGE_MESSAGE, "McCabe Page Message" )
+  create_event_type(t, EVENT_TYPE_FBI_ANALYST_MESSAGE, "FBI Analysts Message" )
+  create_event_type(t, EVENT_TYPE_LYNC_MESSAGE, "FBI Lync Message" )
+
+  print("Custom event types created")
+  return None
+
+def create_tags(t: truxton.TruxtonObject) -> None:
+  t.createtag("AUS", "Actions probably taken by Australia")
+  t.createtag("CHS", "A Confidential Human Source Operation")
+  t.createtag("CIA", "Actions probably taken by CIA")
+  t.createtag("Court Filing", "This item was part of a court filing")
+  t.createtag("Crossfire Dragon", "FBI's investigation of Carter Page")
+  t.createtag("Crossfire Fury", "FBI's investigation of Paul Manafort")
+  t.createtag("Crossfire Razor", "FBI's investigation of Michael Flynn")
+  t.createtag("Crossfire Typhoon", "FBI's investigation of George Papadopoulos")
+  t.createtag("FD-1057", "FBI Electronic Communication")
+  t.createtag("FD-302", "FBI Interview Notes")
+  t.createtag("FD-1087", "FBI Collected Item Log")
+  t.createtag("FISA Abuse", "Things related to FISA abuse")
+  t.createtag("Hatred", "Expression of hatred of Trump")
+  t.createtag("iMessage", "Use of Apple iMessage for off the record conversations")
+  t.createtag("Leak", "Information leaked to the press")
+  t.createtag("Leaker", "This person leaked information to the press")
+  t.createtag("Memo", "This item is part of a memo")
+  t.createtag("Midyear Exam", "FBI's investigation of Hillary Clinton Email Server")
+  t.createtag("News Article", "This items is part of a news article")
+  t.createtag("Recorded", "There's an audio recording of this meeting")
+  t.createtag("Steele Report", "Information about the Steele Report")
+  t.createtag("Testimony", "This is part of testimony")
+  t.createtag("Text Messages", "This file contains text messages")
+  t.createtag("Unhappy", "All is not well in Hurricane-ville")
+  print("Created Tags")
+  return None
+
+def create_investigation(t) -> truxton.TruxtonInvestigation:
   jurisdiction = t.newjurisdiction()
   jurisdiction.id = 100
   jurisdiction.name = "DOJ-DC"
@@ -282,6 +635,3333 @@ def create_investigation(t):
 
   return investigation
 
+def create_media(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
+
+  global Crossfire_Typhoon
+  global Crossfire_Razor
+  global Crossfire_Fury
+  global Crossfire_Dragon
+
+  Crossfire_Typhoon = create_typhoon(t)
+  Crossfire_Razor = create_razor(t)
+  Crossfire_Fury = create_fury(t)
+  Crossfire_Dragon = create_dragon(t)
+
+  media = t.newmedia()
+
+  media.name = "Public Documents"
+  media.description = "Everything released by the government, books, news organizations and blogs"
+  media.case = "DC-SNAFU-2016.2020"
+  media.evidencebag = "EV-0937459386623-a"
+  media.originator = "Jeffrey Jensen"
+  media.latitude = 38.897661
+  media.longitude = -77.036458
+  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
+
+  if not media.save():
+    print("Media not saved")
+  else:
+    print("Media created")
+
+  return media
+
+def create_typhoon(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
+  media = t.newmedia()
+
+  media.name = "Crossfire Typhoon"
+  media.description = "George Papadopoulos"
+  media.case = "97F-HQ-2067748"
+  media.evidencebag = "None"
+  media.originator = "Jeffrey Jensen"
+  media.latitude = 38.897661
+  media.longitude = -77.036458
+  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
+
+  if not media.save():
+    print("Crossfire Typhoon media not saved")
+  else:
+    print("Crossfire Typhoon (George Papadopoulos) media created")
+
+  return media
+
+def create_razor(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
+  media = t.newmedia()
+
+  media.name = "Crossfire Razor"
+  media.description = "Michael Flynn"
+  media.case = "97F-NY-2069860"
+  media.evidencebag = "None"
+  media.originator = "Jeffrey Jensen"
+  media.latitude = 38.897661
+  media.longitude = -77.036458
+  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
+
+  if not media.save():
+    print("Crossfire Razor media not saved")
+  else:
+    print("Crossfire Razor (Michael Flynn) media created")
+
+  return media
+
+def create_fury(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
+  media = t.newmedia()
+
+  media.name = "Crossfire Fury"
+  media.description = "Paul Manafort"
+  media.case = "97F-HQ-2067749"
+  media.evidencebag = "None"
+  media.originator = "Paul Manafort"
+  media.latitude = 38.897661
+  media.longitude = -77.036458
+  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
+
+  if not media.save():
+    print("Crossfire Fury media not saved")
+  else:
+    print("Crossfire Fury (Paul Manafort) media created")
+
+  return media
+
+def create_dragon(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
+  media = t.newmedia()
+
+  media.name = "Crossfire Dragon"
+  media.description = "Carter Page"
+  media.case = "97F-HQ-2067747"
+  media.evidencebag = "None"
+  media.originator = "Carter Page"
+  media.latitude = 38.897661
+  media.longitude = -77.036458
+  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
+
+  if not media.save():
+    print("Crossfire Dragon media not saved")
+  else:
+    print("Crossfire Dragon (Carter Page) media created")
+
+  return media
+
+def create_subjects(t: truxton.TruxtonObject) -> None:
+  print("Creating Subjects")
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_DOWNER
+  s.name = "Alexander Downer"
+  s.description = "Australian High Commissioner to the United Kingdom. Heard Papadopoulos mention Clinton Emails and reported it."
+  s.birthday = datetime.fromisoformat("1951-09-09T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Alexander Downer.png")
+  s.save()
+  s.tag("AUS", "Australia is also known as the Friendly Foreign Government", truxton.TAG_ORIGIN_HUMAN)
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_MCCABE
+  s.name = "Andrew 'Andy' G. McCabe"
+  s.description = "Deputy Director (DD) FBI"
+  s.custom = "Wife Barbra Jill (McFarland) received $467,500 from June-Oct 2015 from Terry McAuliffe" 
+  s.birthday = datetime.fromisoformat("1968-03-18T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Andrew McCabe.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_PRIESTAP
+  s.name = "Edward William 'Bill' Priestap"
+  s.description = "Deputy Counterintelligence Division (DCD) FBI"
+  s.birthday = datetime.fromisoformat("1969-04-05T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Bill Priestap.png")
+  # Email account "ewpriestap" according to Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_STEELE
+  s.name = "Christopher Steele"
+  # 456600733-FISA-footnotes.pdf, page 3 footnote 205
+  s.description = "Former MI-6, aka CROWN (FBI), FBI Confidential Human Source (CHS) paid $95,000"
+  s.birthday = datetime.fromisoformat("1964-06-24T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Christopher Steele.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_BOENTE
+  s.name = "Dana Boente"
+  s.description = "Acting Attorney General"
+  s.birthday = datetime.fromisoformat("1954-02-07T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Dana Boente.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_KRAMER
+  s.name = "David Kramer"
+  s.description = "Aide to Senator John McCain"
+  s.custom = "Went to London to receive dossier from Christopher Steele, leaked it to Buzzfeed"
+  s.birthday = datetime.fromisoformat("1964-12-01T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Kramer.png")
+  s.save()
+  s.tag("Leaker", "Leaked Steele Dossier to Buzzfeed", truxton.TAG_ORIGIN_HUMAN)
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_THOMPSON
+  s.name = "Erika Thompson"
+  s.description = "Assistant to High Commissioner Alexander Downer in London"
+  s.custom = "Her fiance, Christian Cantor (Israeli diplomat), knew Papadopoulos and suggested her boss, Alexander Downer, meet him"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Erika Thompson.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CANTOR
+  s.name = "Christian Cantor"
+  s.description = "Political Counselor at the Embassy of Israel in London"
+  s.custom = "His idea for Papadopoulos to meet Downer. His fiance, Erika Thompson worked for Australian High Commissioner Alexander Downer"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Christian Cantor.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_PAPADOPOULOS
+  s.name = "George Papadopoulos"
+  s.description = "Trump Campaign Aide, AKA Crossfire Typhoon"
+  s.birthday = datetime.fromisoformat("1987-08-19T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/George Papadopoulos.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_SIMPSON
+  s.name = "Glenn Simpson"
+  s.description = "Founder of Fusion GPS, Steele's boss"
+  s.birthday = datetime.fromisoformat("1964-01-01T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Glenn Simpson.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CAMP
+  s.name = "Jean Camp"
+  s.description = "Computer Security Researcher and Clinton supporter, told FBI about 2700 DNS name lookups from Alfa bank for FISA warrant"
+  s.custom = "Her DNS research is at http://www.ljean.com/NetworkData.php"
+  s.birthday = datetime.fromisoformat("1964-09-19T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jean Camp.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_BRENNAN
+  s.name = "John Brennan"
+  s.description = "Director CIA"
+  s.birthday = datetime.fromisoformat("1955-09-22T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/John Brennan.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CARLIN
+  s.name = "John P. Carlin"
+  s.description = "Assistant Attorney General"
+  s.custom = "Head of the Department of Justice's National Security Division (NSD)"
+  s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/John Carlin.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_MIFSUD
+  s.name = "Joseph Mifsud"
+  # https://public.substack.com/p/cia-had-foreign-allies-spy-on-trump
+  s.description = "Probable MI6 Asset. Page 312 of FBI FISA IG Report states 'no evidence Mifsud has ever acted as an FBI CHS'"
+  s.custom = "Told Papadopoulos about Clinton email before Papadopoulos met Alexander Downer"
+  s.birthday = datetime.fromisoformat("1960-04-01T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Joseph Mifsud.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CLINESMITH
+  s.name = "Kevin Clinesmith"
+  s.description = "FBI Lawyer, Convicted of falsifying records and lying on FISA warrant against Carter Page"
+  s.custom = "Author of 'Resistence' text message, illegally altered FISA warrant on Page"
+  s.birthday = datetime.fromisoformat("1982-05-18T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Kevin Clinesmith.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_PAGE
+  s.name = "Lisa C. Page"
+  s.description = "FBI Lawyer, McCabe's Legal Counsel"
+  s.custom = "Husband: Joseph Burrow, full name Lisa Caroline Page"
+  s.birthday = datetime.fromisoformat("1980-08-02T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Lisa Page.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_GAETA
+  s.name = "Michael Joseph Gaeta"
+  s.description = "Assistant FBI Legal Attaché (legat) in Rome, aka 'Handling Agent 1' in FBI IG Report"
+  s.custom = "Former member of the FBI's Eurasian Organized Crime unit, Steele's handler, possibly Mifsud's handler"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Gaeta.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_STRZOK
+  s.name = "Peter P. Strzok II"
+  s.description = "FBI, worked on Flynn case and Clinton EMail Case (Midyear Exam) Spent almost entire FBI career in counterintelligence"
+  s.custom = "Wife: Melissa Hodgman, full name Peter Paul Strzok"
+  s.birthday = datetime.fromisoformat("1970-03-07T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Peter Strzok.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_DEARLOVE
+  s.name = "Sir Richard Dearlove"
+  s.description = "Director BSIS (MI-6)"
+  s.birthday = datetime.fromisoformat("1945-01-23T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Richard Dearlove.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_HANNIGAN
+  s.name = "Robert Hannigan"
+  s.description = "Director GCHQ"
+  s.custom = "Resigned from GCHQ due to his helping paedophile priest avoid jail"
+  s.birthday = datetime.fromisoformat("1965-01-01T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Robert Hannigan.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_POWER
+  s.name = "Samantha Power"
+  s.description = "United States UN Ambassador"
+  s.custom = "Prolific intelligence unmasker. Made 260 unmasking requests in her last year in office. Clearly lacks the ability to think in the abstract."
+  s.birthday = datetime.fromisoformat("1970-09-21T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Samantha Power.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_KISLYAK
+  s.name = "Sergey Ivanovich Kislyak"
+  s.description = "Russia Ambassador"
+  s.custom = "Had phone calls with Flynn"
+  s.birthday = datetime.fromisoformat("1950-09-07T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sergey Ivanovich Kislyak.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_WOOD
+  s.name = "Sir Andrew Wood"
+  s.description = "British Ambassador to Russia"
+  s.custom = "Told John McCain of the Steele Dossier"
+  s.birthday = datetime.fromisoformat("1940-01-02T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sir Andrew Wood.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_HALPER
+  s.name = "Stefan Halper"
+  s.description = "FBI Asset code name Mitch, was sent as CHS to target Carter Page and Papadopoulos, aka 'Source 2' in FBI IG Report, aka CHS-1 in Durham Report"
+  s.custom = "Paid over $400,000 by U.S. government"
+  s.birthday = datetime.fromisoformat("1944-06-04T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Stefan Halper.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_RICE
+  s.name = "Susan E. Rice"
+  s.description = "National Security Advisor"
+  s.birthday = datetime.fromisoformat("1964-11-17T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Susan Rice.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CARTER_PAGE
+  s.name = "Carter Page"
+  s.description = "Trump Campaign Aide and former CIA informant."
+  s.custom = "AKA Crossfire Dragon"
+  s.birthday = datetime.fromisoformat("1971-06-03T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Carter Page.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CLAPPER
+  s.name = "James Clapper"
+  s.description = "Director National Intelligence (DNI)"
+  s.custom = "Leaked Flynn story to WP reporter David Ignatius. Also, Clapper fired Flynn when Flynn was the head of the Defense Intelligence Agency."
+  s.birthday = datetime.fromisoformat("1941-03-14T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Clapper.png")
+  s.save()
+  s.tag("Leaker", "Leaked Flynn story to WP reporter David Ignatius", truxton.TAG_ORIGIN_HUMAN)
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_DANCHENKO
+  s.name = "Igor 'Iggy' Yurievich Danchenko"
+  s.description = "Steele's primary sub source, Paid FBI informant, worked at Brookings Institute"
+  s.birthday = datetime.fromisoformat("1978-05-05T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Igor Danchenko.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_GALKINA
+  s.name = "Olga Galkina"
+  s.description = "Igor Danchenko's primary source. Aka Source 3 in February 9, 2017 Electronic Communication.pdf"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Olga Galkina.png")
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_PIENTKA
+  s.name = "Joseph 'Joe' Pientka III"
+  # Facts we know about Joe
+  # From https://gw.geneanet.org/tdowling?lang=en&pz=erica+marie&nz=tork&p=joe&n=pientka&oc=2
+  # Wife: Melissa Anne Bristow
+  # He lived at 3227 20th Road N, Arlington VA from 2005-08-26 until 2020-07-03 when the gov't bought his house through LEXICON GOVERNMENT SERVICES LLC (N-DREA Not a market Sale)
+  s.description = "Washington Field Office FBI Supervisory Special Agent (SSA), Ran Crossfire Hurricane, interviewed Flynn at White House, gave Flynn defensive briefing"
+  s.custom = "AKA Special Agent-1 in Durham Report"
+  s.birthday = datetime.fromisoformat("1976-01-01T00:00:00-00:00")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_FLYNN
+  s.name = "Michael Flynn"
+  s.description = "Lt. General US Army, AKA Crossfire Razor"
+  s.birthday = datetime.fromisoformat("1958-12-24T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Flynn.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_BARNETT
+  s.name = "William J. Barnett"
+  s.description = "FBI Special Agent handled Flynn investigation then assigned to Special Counsel's Office (SCO)"
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_LITT
+  s.name = "Robert 'Bob' S. Litt"
+  s.description = "General Counsel to DNI Clapper, first person to have thought of Logan Act of 1799"
+  s.birthday = datetime.fromisoformat("1950-01-01T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Robert Litt.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_WISEMAN
+  s.name = "Jeffrey 'Jeff' Wiseman"
+  s.description = "FBI CHS #3, wore a wire, went to MGM Grand DC with George Papadopoulos, at the time he worked for Cerner Corporation in Chicago"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jeffery Wiseman.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_JAMES_BAKER
+  s.name = "James A. Baker"
+  s.description = "FBI General Counsel"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Baker.png")
+  # Email account "james.baker" according to Page 85 of 460365255-Flynn-motion-to-dismiss.pdf
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_SUSSMAN
+  s.name = "Michael Sussman"
+  s.description = "Partner at Perkins Coie Privacy and Data Security Practice. Fed Alfa Bank/Trump Campaign link to James Baker at FBI"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Sussman.png")
+  s.save()
+
+  s = t.newsubject()
+  # https://www.mylife.com/kathleen-kavalec/e435913687320
+  s.id = SUBJECT_ID_KAVALEC
+  s.name = "Kathleen Kavalec"
+  s.description = "Deputy Assistant Secretary, Bureau of European and Eurasian Affairs, Department of State. Met with Steele."
+  s.birthday = datetime.fromisoformat("1958-08-06T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Kathleen Kavalec.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_DOLAN
+  s.name = "Charles Halliday Dolan, Jr."
+  s.description = "Hillary Campaign PR-Executive-1. Started the pee tapes rumor, fed it to Danchenko. Works for KGlobal and Prism Public Affairs. Volunteered for Clinton campaign in 2016"
+  s.birthday = datetime.fromisoformat("1950-06-12T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Charles Dolan.png")
+  s.save()
+  # 1730 N Huntington Street, Arlington, VA 22205-2709
+
+  # Rudolph Contreras, https://www.24hourcampfire.com/ubbthreads/ubbthreads.php/topics/12723193/re-strzok-page-fisa-judge-entanglement-text-messsages
+  # Events to add
+  #  Strzok Page message about Rudy being appointed to FISC
+  #  Contreras accepting plea
+  #  Contreras stepping down from Flynn case
+  # https://everipedia.org/wiki/lang_en/Rudolph_Contreras
+  s = t.newsubject()
+  s.id = SUBJECT_ID_CONTRERAS
+  s.name = "Rudolph (Rudy) Contreras"
+  s.description = "FISC judge in contact with Strzok and Page"
+  s.birthday = datetime.fromisoformat("1962-12-06T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Rudolph Contreras.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_HELSON
+  s.name = "Kevin Helson"
+  s.description = "FBI Agent, WFO, Danchenko's handler"
+  s.save()
+  
+# https://www.washingtonexaminer.com/news/fbis-case-agent-1-stephen-somma-primarily-responsible-for-fisa-failures
+# States that Case Agent 1 in IG Report is Stephen Somma
+  s = t.newsubject()
+  s.id = SUBJECT_ID_SOMMA
+  s.name = "Stephen (Steve) Somma"
+  s.description = "FBI Agent, Crossfire Hurricane team lead of Crossfire Dragon. aka \"Case Agent 1\" in Horowitz report. Justice Department referred him for disciplinary review after an investigation into alleged Foreign Intelligence Surveillance Act abuses. Somma was \"primarily responsible for some of the most significant errors and omissions\" during the process of obtaining FISA warrants to wiretap Trump campaign adviser Carter Page in 2016 and 2017."
+  s.save()
+  
+  s = t.newsubject()
+  s.id = SUBJECT_ID_AUTEN
+  s.name = "Brian James Auten"
+  s.description = "FBI Intelligence Analyst, Crossfire Hurricane team"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Brian Auten.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_BOWDICH
+  s.name = "David L. Bowdich"
+  s.description = "Deputy Director FBI, as of February 2021 he is Chief Security Officer of Disney"
+  s.birthday = datetime.fromisoformat("1969-03-14T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Bowdich.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_KORTAN
+  s.name = "Michael 'Mike' P. Kortan"
+  s.description = "Assistant Directory for Public Affairs FBI, resigned 15 Feb 2018 for accepting tickets to Nationals baseball game in May of 2016 (bribes)"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Kortan.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_COMEY
+  s.name = "James Brien Comey"
+  s.description = "Director FBI"
+  s.birthday = datetime.fromisoformat("1960-12-14T00:00:00-00:00")
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Comey.png")
+  s.save()
+  s.tag("Leaker", "Leaked notes to Daniel Richman to pass to NY Times", truxton.TAG_ORIGIN_HUMAN)
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_LAYCOCK
+  s.name = "Stephen C. Laycock"
+  s.description = "FBI Executive Assistant Director Intelligence Branch"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Stephen Laycock.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_BOONE
+  s.name = "Jennifer C. Boone"
+  s.description = "FBI Deputy Assistant Director for Counterintelligence"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jennifer Boone.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_RYBICKI
+  s.name = "James E. Rybicki"
+  s.description = "FBI Director Comey's Chief of Staff"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Rybicki.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_MOFFA
+  s.name = "Jonathan Moffa"
+  s.description = "FBI Agent"
+  #s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jonathan Moffa.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_ANDERSON
+  s.name = "Trisha Anderson"
+  s.description = "Deputy General Counsel at FBI"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Trisha Anderson.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_STEINBACH
+  s.name = "Michael Steinbach"
+  s.description = "Executive Assistant Director of NSB at FBI, Preistap's boss. Had secret meetings with the press and received unauthorized gifts from the press."
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Steinbach.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_MOYER
+  s.name = "Sally Anne Moyer"
+  s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
+  s.description = "FBI unit chief Office of General Counsel (Agent 5 in June 2018 IG report), Anti-Trump person"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sally Moyer.png")
+  s.save()
+
+  s = t.newsubject()
+  s.id = SUBJECT_ID_VARACALLI
+  s.name = "Michael F. Varacalli"
+  #s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
+  s.description = "FBI agent"
+  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Varacalli.png")
+  s.save()
+
+  print("The subjects of the investigation (aka suspects/players/persons of interest) created")
+  return None
+
+def mccabe_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish McCabe to Page: " + subject )
+  
+  global mccabe_page_associations_were_made
+
+  if mccabe_page_associations_were_made == False:
+    # Now associate the numbers with faces
+
+    relation = parent_file.newrelation()
+    assert isinstance(relation, truxton.TruxtonRelation)
+    relation.a = mccabe_combined_id
+    relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
+    relation.b = SUBJECT_ID_MCCABE
+    relation.btype = truxton.OBJECT_TYPE_SUSPECT
+    relation.relation = truxton.RELATION_COMBINED_ID
+    relation.save()
+
+    mccabe_page_associations_were_made = True
+
+  event_time = communication.sent
+  event_title = entitle("McCabe to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def page_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot finish Page to McCabe: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to McCabe: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+  return communication
+
+def mccabe_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot add McCabe to Unknown: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("McCabe to Unknown: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
+def mccabe_to_margolin(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(MARGOLIN_PHONE_NUMBER, "Josh Margolin", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish McCabe to Margolin: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("McCabe to Margolin: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def margolin_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  communication.addparticipant(MARGOLIN_PHONE_NUMBER, "Josh Margolin", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot finish Margolin to McCabe: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Margolin to McCabe: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+  return communication
+
+def mccabe_to_apuzzo(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(APUZZO_PHONE_NUMBER, "Matt Apuzzo", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish McCabe to Apuzzo: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("McCabe to Apuzzo: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def apuzzo_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(APUZZO_PHONE_NUMBER, "Matt Apuzzo", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish Apuzzo to McCabe: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Apuzzo to McCabe: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def smith_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(SMITH_PHONE_NUMBER, "Eric Smith", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish Smith to McCabe: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Smith to McCabe: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def mccabe_to_smith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(SMITH_PHONE_NUMBER, "Eric Smith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish McCabe to Smith: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("McCabe to Smith: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def mccabe_to_jeremy(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(JEREMY_PHONE_NUMBER, "Jeremy F", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish McCabe to Jeremy: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("McCabe to Jeremy: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def jeremy_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(JEREMY_PHONE_NUMBER, "Jeremy F", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish Jeremy to McCabe: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Jeremy to McCabe: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def ramadan_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(RAMADAN_PHONE_NUMBER, "David Ramadan", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish Ramadan to McCabe: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Ramadan to McCabe: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def mccabe_to_ramadan(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(RAMADAN_PHONE_NUMBER, "David Ramadan", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish McCabe to Ramadan: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("McCabe to Ramadan: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
+
+  return communication
+
+def strzok_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  strzok_combined_id = communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  page_combined_id = communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish Strzok to Page: " + subject )
+
+  global strzok_page_associations_were_made
+
+  if strzok_page_associations_were_made == False:
+    # Now associate the numbers with faces
+
+    relation = parent_file.newrelation()
+    assert isinstance(relation, truxton.TruxtonRelation)
+    relation.a = strzok_combined_id
+    relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
+    relation.b = SUBJECT_ID_STRZOK
+    relation.btype = truxton.OBJECT_TYPE_SUSPECT
+    relation.relation = truxton.RELATION_COMBINED_ID
+    relation.save()
+
+    relation = parent_file.newrelation()
+    relation.a = page_combined_id
+    relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
+    relation.b = SUBJECT_ID_PAGE
+    relation.btype = truxton.OBJECT_TYPE_SUSPECT
+    relation.relation = truxton.RELATION_COMBINED_ID
+    relation.save()
+
+    strzok_page_associations_were_made = True
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
+
+  return communication
+
+def strzok_to_page_unix_epoch(parent_file: truxton.TruxtonChildFileIO, sent: int, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  # communication.sent = filetime_to_datetime(unix_millisecond_epoch_to_ticks(sent))
+  communication.sent = unix_millisecond_epoch_to_est_datetime(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Page: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Strzok to Page: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
+  return communication
+
+def page_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Page to Strzok: " + subject )
+
+  event_time = str(communication.sent)
+  event_title = entitle("Page to Strzok: " + subject)
+    
+  add_event( parent_file, event_time, event_time, event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
+  return communication
+
+def page_to_strzok_unix_epoch(parent_file: truxton.TruxtonChildFileIO, sent: int, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = unix_millisecond_epoch_to_est_datetime(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Page to Strzok: " + subject )
+
+  event_time = communication.sent
+  
+  event_title = entitle("Page to Strzok: " + subject)
+
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
+  return communication
+
+def page_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Page to Unknown: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Page to Unknown: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
+def unknown_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Page: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Unknown to Page: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
+def unknown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Strzok: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Unknown to Strzok: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
+def strzok_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  communication = parent_file.newcommunication()
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SMS
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Unknown: " + subject )
+  
+  event_time = communication.sent
+  event_title = entitle("Strzok to Unknown: " + subject)
+    
+  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
+
+  return communication
+
+def lync_strzok_to_rybicki(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Rybicki: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Rybicki: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moyer_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moyer to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moyer to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_heide_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("caheide@lync.fbi.gov", "Curtis A. Heide", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Heide to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Heide to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_moyer(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Moyer: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Moyer: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_peiper(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("dpeiper@lync.fbi.gov", "D Peiper", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Peiper: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Peiper: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moyer_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moyer to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moyer to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_stefanik_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("klstefanik@lync.fbi.gov", "K L Stefanik", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Stefanik to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Stefanik to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_moyer(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Moyer: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Moyer: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_doinidis(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("jdoinidis@lync.fbi.gov", "Jessica Doinidis", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Doinidis: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Doinidis: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_perry(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("mjperry@lync.fbi.gov", "M J Perry", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Perry: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Perry: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_clinesmith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Clinesmith: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Clinesmith: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_clinesmith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Clinesmith: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Clinesmith: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_clinesmith_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Clinesmith to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Clinesmith to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_clinesmith_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Clinesmith to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Clinesmith to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_unknown_to_rybicki(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Rybicki: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Unknown to Rybicki: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_unknown_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Unknown to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moyer_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moyer to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moyer to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_bowdich(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("dlbowdich@lync.fbi.gov", "David L. Bowdich", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Bowdich: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Bowdich: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_rybicki_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Rybicki to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Rybicki to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_rybicki(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Rybicki: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Rybicki: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_rybicki_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Rybicki to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Rybicki to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_anderson(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("anderson@lync.fbi.gov", "Trisha Anderson", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Anderson: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Anderson: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moffa_to_anderson(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("anderson@lync.fbi.gov", "Trisha Anderson", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moffa to Anderson: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moffa to Anderson: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+def lync_unknown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Unknown to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_auten_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Auten to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Auten to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_auten_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Auten to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Auten to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_auten(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Auten: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Auten: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_auten(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Auten: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Auten: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boetig_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boetig@lync.fbi.gov", "Brian Boetig", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boetig to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boetig to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boetig_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boetig@lync.fbi.gov", "Brian Boetig", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boetig to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boetig to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_unknown_to_boetig(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boetig@lync.fbi.gov", "Brian Boetig", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Boetig: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Unknown to Boetig: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_beers_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("beers@lync.fbi.gov", "Elizabeth Rae Beers", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Beers to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Beers to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_beers(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("beers@lync.fbi.gov", "Elizabeth Rae Beers", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Beers: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Beers: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_pientka_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Pientka to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Pientka to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_pientka_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Pientka to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Pientka to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_pientka(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Pientka: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Pientka: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_pientka(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Pientka: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Pientka: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_laird(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("mlaird@lync.fbi.gov", "Matt? Laird", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Laird: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Laird: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_marasco(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("jdmarasco@lync.fbi.gov", "Joseph 'Joe' D Marasco", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Marasco: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Marasco: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_ryan(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("meryan2@lync.fbi.gov", "M E Ryan", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Ryan: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Ryan: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_varacalli(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("mfvaracalli@lync.fbi.gov", "Michael F. Varacalli", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Varacalli: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Varacalli: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_varacalli_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("mfvaracalli@lync.fbi.gov", "Michael F. Varacalli", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Varacalli to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Varacalli to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_vandeun_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("bjvandeun@lync.fbi.gov", "Bryan J. Vandeun", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Vandeun to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Vandeun to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_mains_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ramains@lync.fbi.gov", "Rick A. Mains", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Mains to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Mains to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_mains(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("ramains@lync.fbi.gov", "Rick A. Mains", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Mains: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Mains: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_heard_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("kheard@lync.fbi.gov", "K Heard", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Heard to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Heard to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_nelson_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("jjnelson@lync.fbi.gov", "J J Nelson", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Nelson to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Nelson to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_group_11f1fbpp(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("11f1fbpp@lync.fbi.gov", "Group Lync Chat 11f1fbpp", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to 11f1fbpp: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to 11f1fbpp: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moffa_to_group_8q5h5l0r(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("8q5h5l0r@lync.fbi.gov", "Group Lync Chat 8q5h5l0r", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moffa to 8q5h5l0r: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moffa to 8q5h5l0r: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moffa_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moffa to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moffa to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_moffa(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Moffa: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Moffa: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_smith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("jrsmith7@lync.fbi.gov", "J R Smith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Smith: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Smith: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_haerte_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("haerte@lync.fbi.gov", "Paul H. Haertel", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Haertel to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Haertel to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_haerte(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("haerte@lync.fbi.gov", "Paul H. Haertel", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Haertel: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Haertel: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_jones(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("jones@lync.fbi.gov", "Robert \"Bob\" Allan Jones", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Jones: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Jones: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moffa_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moffa to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moffa to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_unknown_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Unknown to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_moffa_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Moffa to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Moffa to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_quinn_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("rpquinn@lync.fbi.gov", "Richard P. Quinn", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Quinn to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Quinn to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_page_to_miller(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("jmiller1@lync.fbi.gov", "J Miller", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Page to Miller: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Page to Miller: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_miller_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("jmiller1@lync.fbi.gov", "J Miller", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Miller to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Miller to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_quinn_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("quinn@lync.fbi.gov", "Richard Quinn", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Quinn to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Quinn to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_quinn(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("quinn@lync.fbi.gov", "Richard Quinn", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Quinn: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Quinn: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_moffa(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Moffa: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Moffa: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_carroll_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("tmcarroll@lync.fbi.gov", "T M Carroll", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Carroll to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Carroll to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_rommal(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("rommal@lync.fbi.gov", "Eric J. Rommal", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Rommal: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Rommal: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_rommal_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("rommal@lync.fbi.gov", "Eric J. Rommal", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Rommal to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Rommal to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_kohler_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("kohler@lync.fbi.gov", "Alan E. Kohler, Jr.", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Kohler to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Kohler to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_curtin_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("mccabe@lync.fbi.gov", "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("curtin@lync.fbi.gov", "Royce E. Curtin", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Curtin to McCabe: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Curtin to McCabe: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_mccabe_to_curtin(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("mccabe@lync.fbi.gov", "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("curtin@lync.fbi.gov", "Royce E. Curtin", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add McCabe to Curtin: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("McCabe to Curtin: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_welch_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("welch@lync.fbi.gov", "FNU Welch", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Welch to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Welch to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_kohler(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("kohler@lync.fbi.gov", "Alan E. Kohler, Jr.", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Kohler: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Kohler: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_driscol_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("driscol@lync.fbi.gov", "Brian Driscoll", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Driscol to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Driscol to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_driscol(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("driscol@lync.fbi.gov", "Brian Driscoll", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Driscol: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Driscol: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Unknown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Unknown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Page: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Page: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_unknown_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Unknown to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Unknown to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_laycock(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("laycock@lync.fbi.gov", "Stephen C. Laycock", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Laycock: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Laycock: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_camp(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("camp@lync.fbi.gov", "FNU Camp", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Camp: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Camp: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_thomas(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("thomas@lync.fbi.gov", "FNU Thomas", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Thomas: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Thomas: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_thomas_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("thomas@lync.fbi.gov", "FNU Thomas", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Thomas to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Thomas to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_tricol(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("tricol@lync.fbi.gov", "FNU Tricol", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Boone to Tricol: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to Tricol: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_tricol_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("tricol@lync.fbi.gov", "FNU Tricol", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Tricol to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Tricol to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_camp_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("camp@lync.fbi.gov", "FNU Camp", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Camp to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Camp to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_laycock_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("laycock@lync.fbi.gov", "Stephen C. Laycock", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Laycock to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Laycock to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_laycock_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("laycock@lync.fbi.gov", "Stephen C. Laycock", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Laycock to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Laycock to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_mcgoniga_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add McGonigal to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("McGonigal to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_mcgoniga_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add McGonigal to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("McGonigal to Boone: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_boone_to_mcgoniga(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add McGonigal to Boone: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Boone to McGonigal: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_mcgoniga(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to McGonigal: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to McGonigal: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_strzok_to_brown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("brown@lync.fbi.gov", "John Brown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Strzok to Brown: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Strzok to Brown: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def lync_brown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_LYNC
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  communication.addparticipant("brown@lync.fbi.gov", "John Brown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
+  if communication.finished() == False:
+    print( "Cannot add Brown to Strzok: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Brown to Strzok: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
+
+  return communication
+
+def fbi_analysis_chat(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
+  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
+  communication = parent_file.newcommunication()
+  assert isinstance(communication, truxton.TruxtonCommunication)
+  communication.sent = datetime.fromisoformat(sent)
+  communication.received = communication.sent
+  communication.subject = subject
+  communication.type = truxton.MESSAGE_TYPE_SKYPE
+  if communication.save() == False:
+    print( "Cannot save communication " + subject )
+
+  communication.addparticipant(UNKNOWN_FBI_ANALYST, "Unknown Analyst", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  communication.addparticipant(FBI_ANALYST_CHAT, "FBI Analysis Chat Room", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
+  if communication.finished() == False:
+    print( "Cannot finish Analyst Lync: " + subject )
+
+  event_time = communication.sent
+  event_title = entitle("Analyst Lync: " + subject)
+
+  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_FBI_ANALYST_MESSAGE)
+
+  return communication
+
+# Start of event data
 def add_campaign_events(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_clinton_campaign_events(parent_file)
   add_trump_campaign_events(parent_file)
@@ -621,7 +4301,7 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   fbi_analysis_chat(child_file, "2017-01-10T20:26:10+05:00", "haha, yeah, if that all doesn't get reversed on the 20th I'll be very surprised")
   fbi_analysis_chat(child_file, "2017-01-10T20:26:24+05:00", "wow that would look really bad")
 
-  # Page 31, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
+  # Page 31, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT 477366112-Flynn-Memo-Sept-24-2020.pdf
   page_to_strzok(child_file, "2016-08-03T07:31:14+04:00", "Just stressed. About things I can't control at all, so it's stupid. But still, here I am")
   m = strzok_to_page(child_file, "2016-08-03T07:32:53+04:00", "Please. I am the KING of that behavior. It mixes well with my control freaky silliness. What? This case/mye? Something else?")
   m.addnote("mye - Midyear Exam (Hillary Clinton classified emails)")
@@ -629,7 +4309,6 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2016-08-03T07:38:26+04:00", "And it's all ok. We'll succeed in spite of ourselves. Problem is this is MUCH more tasty for one of those Doj aholes to leak. For the first time in a while I'm not worried about our side. \U0001f612")
   page_to_strzok(child_file, "2016-08-03T07:39:21+04:00", "I know. Just can't.")
   strzok_to_page(child_file, "2016-08-03T07:39:28+04:00", "He's clearly not what? Worrying about jt?")
-  page_to_strzok(child_file, "2016-08-05T07:39:21+04:00", "I know. Just can't.")
   page_to_strzok(child_file, "2016-08-05T14:50:42+04:00", "Clinesmith too, right?")
   strzok_to_page(child_file, "2016-08-05T14:59:53+04:00", "Whatever. It's fine. Kevin deserves to be there")
   page_to_strzok(child_file, "2016-08-05T15:12:53+04:00", "I'm not going to send it until later this afternoon.")
@@ -817,9 +4496,9 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   m.addnote("razor is Crossfire Razor - Michael Flynn, case number 97F-NY-2069860, Opened 16 Aug 2016")
   strzok_to_page(child_file, "2017-01-31T01:31:31+05:00", "I'm glad you got a sensible answer from JB on all the Congressional response stuff..")
   strzok_to_page(child_file, "2017-01-31T01:33:35+05:00", "The stuff from today you've still got to talk to Jim and --Redacted--, right? I'd think JB would be angry because it's very much at odds with what his conversation with them indicated.")
-  strzok_to_page(child_file, "2017-01-31T02:25:03+05:00", "I guess those packages won't be going anywhere.")
+  #page_to_mccabe(child_file, "2017-01-31T02:25:03+05:00", "I guess those packages won't be going anywhere.")
   strzok_to_page(child_file, "2017-01-31T02:29:50+05:00", "Wow. That accelerated.quickly")
-  page_to_strzok(child_file, "2017-01-31T02:33:32+05:00", "Ha. I guess not.")
+  page_to_mccabe(child_file, "2017-01-31T02:33:32+05:00", "Ha. I guess not.")
   
   # Page 40, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
   page_to_strzok(child_file, "2017-01-31T02:33:43+05:00", "Yeah it did.")
@@ -1160,17 +4839,17 @@ def add_flynn_memo_sept_24_2020(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_page(child_file, "2017-05-17T10:15:03+04:00", "Ok re Jim. Seems improper to not discuss it during the interview. Hell, thats one of the most critical parts of it. I'll forward --Redacted-- email to Bill and ask him to ask for it this morning.")
   page_to_strzok(child_file, "2017-05-17T10:30:03+04:00", "Doesn't really mention the topic he said it did. Is just a reference to the \"three times\" statement which was in the final. Just fyi")
 
-  # Page 53, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
+  # Page 53, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT, 477366112-Flynn-Memo-Sept-24-2020.pdf
   page_to_strzok(child_file, "2017-05-17T16:58:26+04:00", "Copy")
   strzok_to_page(child_file, "2017-05-17T16:58:09+04:00", "We may be late. Bill is still on the phone. No way I'm coming up without him")
   strzok_to_page(child_file, "2017-05-17T19:57:29+04:00", "One note on outline. We put no detail on March Toll predication. Does Andy have left/right limits on that")
   page_to_strzok(child_file, "2017-05-17T20:53:01+04:00", "Okay")
   strzok_to_page(child_file, "2017-05-18T10:32:31+04:00", "Talked to Aaron in the context of getting preservation letter out under Mueller's authority, not the team. Because while they were working on them yesterday, people weren't thinking about them not going out under anything other than our letterhead.")
   #page_to_strzok(child_file, "2017-05-18T10:52:44+04:00", "I agree. Can you get them out today? And god, EVERYTHING just got so much better on that case...")
-  m = strzok_to_page(child_file, "2017-05-18T10:57:06+04:00", "We have to. I emailed Bill last night and told him the same. He said Kevin and the team were working on them and understoof the urgency. But they're not done.\n\nI want them going out under SC's name/authority. I'm talking to Aaron about it this morning, hopefully Kevin in touch to draft them appropriately.")
+  m = strzok_to_page(child_file, "2017-05-18T10:57:06+04:00", "We have to. I emailed Bill last night and told him the same. He said Kevin and the team were working on them and understood the urgency. But they're not done.\n\nI want them going out under SC's name/authority. I'm talking to Aaron about it this morning, hopefully Kevin in touch to draft them appropriately.")
   m.addnote("Kevin could be Kevin Clinesmith FBI Lawyer, Convicted of falsifying records and lying on FISA warrant against Carter Page")
 
-  # Page 54, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT
+  # Page 54, INBOX is strzok to page, OUTBOX is page to strozk, all appear to be GMT, 477366112-Flynn-Memo-Sept-24-2020.pdf
   strzok_to_page(child_file, "2017-05-18T07:31:00+04:00", "Understand I'm being reasonable in my concern. I'm not saying \"Andy f*cked up.\" I'm just saying I disagree and am concerned about where it ends up. In the end we're one team one fight, Lisa (though I frequently hate people who use that phrase)\n\nDid your anniversary go ok? I don't really want a lote of deta")
 
   return None
@@ -1349,38 +5028,40 @@ def add_mccabe_page_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   url.save()
   
   # These timestamps are BS, they all in in a whole minute
-  m = mccabe_to_page(child_file, "2016-10-12T19:11:00+04:00", "OI now has a robust explanation re any possible bias of the chs in the package. Don't know what the holdup is now, other than Stu's continued concerns. Strong operational need to have in place before Monday if at all possible, which means to ct tomorrow. I communicated you and boss's green light to Stu earlier, and just sent an email to Stu asking where things stood. This might take a high-level push. Will keep you posted.")
+  # Outgoing is Page to McCabe
+  # Incoming is McCabe to Page
+  m = page_to_mccabe(child_file, "2016-10-12T19:11:00+04:00", "OI now has a robust explanation re any possible bias of the chs in the package. Don't know what the holdup is now, other than Stu's continued concerns. Strong operational need to have in place before Monday if at all possible, which means to ct tomorrow. I communicated you and boss's green light to Stu earlier, and just sent an email to Stu asking where things stood. This might take a high-level push. Will keep you posted.")
   m.addnote("OI - Office of Intelligence, chs - Confidential Human Source")
-  mccabe_to_page(child_file, "2016-10-12T19:13:00+04:00", "If I have not heard back from Stu in an hour, I will invoke your name to say you want to know where things are, so long as that is okay with you.")
-  mccabe_to_page(child_file, "2016-10-12T21:07:00+04:00", "Spoke to Stu. Let's talk in the morning.")
-  mccabe_to_page(child_file, "2016-10-12T22:15:00+04:00", "Expect John C. will probably reach out in the morning as well. Just call when you're up. Thx.")
-  mccabe_to_page(child_file, "2016-10-13T10:14:00+04:00", "Please. \U0001f60a")
-  mccabe_to_page(child_file, "2016-10-13T10:14:01+04:00", "Call my cell when you are free to chat.")
-  mccabe_to_page(child_file, "2016-10-13T10:23:00+04:00", "Also, let me know if there is a --Redacted-- that you are related to. I'm guessing not, but just wanted to check.")
-  mccabe_to_page(child_file, "2016-10-13T11:00:00+04:00", "Rgr. Thanks.")
-  page_to_mccabe(child_file, "2016-10-13T11:00:01+04:00", "Call u after 830")
-  page_to_mccabe(child_file, "2016-10-13T11:00:02+04:00", "No Sam I am.")
-  page_to_mccabe(child_file, "2016-10-13T11:47:00+04:00", "Ready. Office or cell?")
-  mccabe_to_page(child_file, "2016-10-13T11:48:00+04:00", "Cell please")
-  mccabe_to_page(child_file, "2016-10-13T20:00:00+04:00", "Correction: CD says letter was def CD-1 fake. NFI from me, but they likely have more.")
-  mccabe_to_page(child_file, "2016-10-14T09:54:00+04:00", "You haven't heard from State, correct? We gave them until 10 am eastern to raise their concerns. Our plan is to proceed with the unredacted production to the Hill if we don't hear anything in the next few minutes.")
-  page_to_mccabe(child_file, "2016-10-14T10:29:00+04:00", "I have not heard anything from them.")
-  mccabe_to_page(child_file, "2016-10-14T10:43:00+04:00", "Can you follow up with Neil again? I spoke to Tash, she also had the same understanding that we cold go alone.\n\nAlso, it would be very very helpful to get DDCIA to clarify that they DO want the content. The DAG continues to use that as an excuse.")
-  mccabe_to_page(child_file, "2016-10-14T10:44:00+04:00", "Finally, it looks like BA did not get the call from the senator's ofc, that was inaccurate. BA has it now.")
-  page_to_mccabe(child_file, "2016-10-14T10:45:00+04:00", "Ok. Thanks.")
-  page_to_mccabe(child_file, "2016-10-14T10:47:00+04:00", "I told Neils office you would be the point person on setting it up for us. Maybe you can call his assistant and ask her if he is ready to schedule. If the answer is no, then tell her I will need to talk to him again.")
-  page_to_mccabe(child_file, "2016-10-14T10:48:00+04:00", "She is --Redacted--")
-  mccabe_to_page(child_file, "2016-10-14T10:51:00+04:00", "Got it. Will call now.")
-  m = mccabe_to_page(child_file, "2016-10-14T10:57:00+04:00", "I also have moffa writing up everything cyd knows about what is on those drives. Will be ready by monday.")
-  m.addnote("cyd - FBI Cyber Division")
-  mccabe_to_page(child_file, "2016-10-14T10:57:01+04:00", "Just called. Apparently the DAG now wants to be there, and WH wants DOJ to host. So we are setting that up now.\n\nWe will very much need to get Cohen's view before we meet with her. Better, have him weigh in with her before the meeting. We need to speak with one voice, if that is in fact the case.")
-  page_to_mccabe(child_file, "2016-10-14T11:27:00+04:00", "Thanks. I will reach out to David.")
-  mccabe_to_page(child_file, "2016-10-15T18:48:01+04:00", "Quick press response awaiting your clearance on unclassified email. Could you check it out please?")
-  page_to_mccabe(child_file, "2016-10-15T18:52:00+04:00", "Can't take your call as I am in a session. If necessary I can step out. I read the response and it seems fine, with the exception of the use of the term \"billets\". Too military and may not be understood.")
-  mccabe_to_page(child_file, "2016-10-15T18:53:01+04:00", "No problem.")
-  page_to_mccabe(child_file, "2016-10-15T18:53:01+04:00", "See if you can change it to something like \"space for additional fbi employees assigned abroad\"")
-  mccabe_to_page(child_file, "2016-10-15T18:53:03+04:00", "Got it. Just needed clearance on the statement. Will let the team know. Thanks.")
-  page_to_mccabe(child_file, "2016-10-15T18:54:00+04:00", "Need me to step out and call?")
+  page_to_mccabe(child_file, "2016-10-12T19:13:00+04:00", "If I have not heard back from Stu in an hour, I will invoke your name to say you want to know where things are, so long as that is okay with you.")
+  page_to_mccabe(child_file, "2016-10-12T21:07:00+04:00", "Spoke to Stu. Let's talk in the morning.")
+  page_to_mccabe(child_file, "2016-10-12T22:15:00+04:00", "Expect John C. will probably reach out in the morning as well. Just call when you're up. Thx.")
+  page_to_mccabe(child_file, "2016-10-13T10:14:00+04:00", "Please. \U0001f60a")
+  page_to_mccabe(child_file, "2016-10-13T10:14:01+04:00", "Call my cell when you are free to chat.")
+  page_to_mccabe(child_file, "2016-10-13T10:23:00+04:00", "Also, let me know if there is a --Redacted-- that you are related to. I'm guessing not, but just wanted to check.")
+  page_to_mccabe(child_file, "2016-10-13T11:00:00+04:00", "Rgr. Thanks.")
+  mccabe_to_page(child_file, "2016-10-13T11:00:01+04:00", "Call u after 830")
+  mccabe_to_page(child_file, "2016-10-13T11:00:02+04:00", "No Sam I am.")
+  mccabe_to_page(child_file, "2016-10-13T11:47:00+04:00", "Ready. Office or cell?")
+  page_to_mccabe(child_file, "2016-10-13T11:48:00+04:00", "Cell please")
+  page_to_mccabe(child_file, "2016-10-13T20:00:00+04:00", "Correction: CD says letter was def CD-1 fake. NFI from me, but they likely have more.")
+  #mccabe_to_page(child_file, "2016-10-14T09:54:00+04:00", "You haven't heard from State, correct? We gave them until 10 am eastern to raise their concerns. Our plan is to proceed with the unredacted production to the Hill if we don't hear anything in the next few minutes.")
+  #page_to_mccabe(child_file, "2016-10-14T10:29:00+04:00", "I have not heard anything from them.")
+  #mccabe_to_page(child_file, "2016-10-14T10:43:00+04:00", "Can you follow up with Neil again? I spoke to Tash, she also had the same understanding that we cold go alone.\n\nAlso, it would be very very helpful to get DDCIA to clarify that they DO want the content. The DAG continues to use that as an excuse.")
+  #mccabe_to_page(child_file, "2016-10-14T10:44:00+04:00", "Finally, it looks like BA did not get the call from the senator's ofc, that was inaccurate. BA has it now.")
+  #page_to_mccabe(child_file, "2016-10-14T10:45:00+04:00", "Ok. Thanks.")
+  #page_to_mccabe(child_file, "2016-10-14T10:47:00+04:00", "I told Neils office you would be the point person on setting it up for us. Maybe you can call his assistant and ask her if he is ready to schedule. If the answer is no, then tell her I will need to talk to him again.")
+  #page_to_mccabe(child_file, "2016-10-14T10:48:00+04:00", "She is --Redacted--")
+  #mccabe_to_page(child_file, "2016-10-14T10:51:00+04:00", "Got it. Will call now.")
+  #m = mccabe_to_page(child_file, "2016-10-14T10:57:00+04:00", "I also have moffa writing up everything cyd knows about what is on those drives. Will be ready by monday.")
+  #m.addnote("cyd - FBI Cyber Division")
+  #mccabe_to_page(child_file, "2016-10-14T10:57:01+04:00", "Just called. Apparently the DAG now wants to be there, and WH wants DOJ to host. So we are setting that up now.\n\nWe will very much need to get Cohen's view before we meet with her. Better, have him weigh in with her before the meeting. We need to speak with one voice, if that is in fact the case.")
+  #page_to_mccabe(child_file, "2016-10-14T11:27:00+04:00", "Thanks. I will reach out to David.")
+  page_to_mccabe(child_file, "2016-10-15T18:48:01+04:00", "Quick press response awaiting your clearance on unclassified email. Could you check it out please?")
+  mccabe_to_page(child_file, "2016-10-15T18:52:00+04:00", "Can't take your call as I am in a session. If necessary I can step out. I read the response and it seems fine, with the exception of the use of the term \"billets\". Too military and may not be understood.")
+  page_to_mccabe(child_file, "2016-10-15T18:53:01+04:00", "No problem.")
+  mccabe_to_page(child_file, "2016-10-15T18:53:01+04:00", "See if you can change it to something like \"space for additional fbi employees assigned abroad\"")
+  page_to_mccabe(child_file, "2016-10-15T18:53:03+04:00", "Got it. Just needed clearance on the statement. Will let the team know. Thanks.")
+  mccabe_to_page(child_file, "2016-10-15T18:54:00+04:00", "Need me to step out and call?")
  
   # https://www.scribd.com/document/403323155/McCabe-Page-Meeting-Text#from_embed
   # Timestamps on original document were LOCAL time, they have been converted to UTC
@@ -1401,7 +5082,7 @@ def add_mccabe_page_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   page_to_mccabe(child_file, "2017-01-11T00:05:00+05:00", "Times has it.\n\nNYTimes: Unsubstantiated Report Has Compromising Information on Trump, Intelligence Chiefs Say\nUnsubstantiated Report Has Compromising Information on Trump, Intelligence Chiefs Say http://nyti.ms/2jsp4xR")
   page_to_mccabe(child_file, "2017-01-31T00:06:00+05:00", "There could be 11 packages tomorrow, but I think 8 still need ogc signature. Just fyi.")
   mccabe_to_page(child_file, "2017-01-31T02:25:00+05:00", "I guess those packages won't be going anywhere.")
-  mccabe_to_page(child_file, "2017-01-31T02:33:00+05:00", "Ha. I guess not.")
+  #page_to_mccabe(child_file, "2017-01-31T02:33:00+05:00", "Ha. I guess not.")
   m = page_to_mccabe(child_file, "2017-02-02T02:44:00+05:00", "You see this?\n\nhttp://wapo.st/2ktHlOX")
   m.addnote("'This was the worst call by far': Trump badgered, bragged and abruptly ended phone call with Australian leader")
   mccabe_to_page(child_file, "2017-02-02T02:20:00+05:00", "Yikes")
@@ -1478,6 +5159,8 @@ def add_strzok_page_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_october_30(parent_file)
   add_29_jan_21(parent_file)
   add_grassley_submission(parent_file)
+  add_declassified_binder_4(parent_file)
+  
   return None
 
   # https://www.foxnews.com/politics/strzok-page-texts-reveal-personal-relationship-between-fbi-official-and-judge-recused-from-flynn-case
@@ -2172,7 +5855,6 @@ def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO)
   # Page 7 FBI-HJC119-CH-000428 2025.04.10 - Page text messages.pdf
   mccabe_to_page(child_file, "2016-04-22T00:20:00+04:00", "Ok. How am I looking for special counsel tomorrow?") # Item 78
   page_to_strzok(child_file, "2016-05-01T15:36:00+04:00", "Hasn't come up again, can't decide whether to bring it up on my own (sorry I lied, just didn't want to have to explain hillary case, why you'd call, etc.") # Item 80
-  page_to_strzok(child_file, "2016-05-04T00:40:00+04:00", "Hasn't come up again, can't decide whether to bring it up on my own (sorry I lied, just didn't want to have to explain hillary case, why you'd call, etc.") # Item 80
   page_to_strzok(child_file, "2016-05-04T22:37:10+04:00", "Why not just have him send an email to Mike and Andy explaining what he think actually happened? Is it classified?") # Item 89
 
   # Page 8 FBI-HJC119-CH-000429 2025.04.10 - Page text messages.pdf
@@ -2187,8 +5869,8 @@ def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("MYE - Midyear Exam (Hillary Clinton classified emails)")
   m = strzok_to_page(child_file, "2016-06-12T01:29:42+04:00", "I started. And while i hate Trump, part of me thought --Redacted-- would not/may not get into Yale because they're white and not from buttf*ck Texas...")
   m.tag("Hatred", "i hate Trump is not a term of endearment", truxton.TAG_ORIGIN_HUMAN)
-  m = strzok_to_page(child_file, "2016-06-13T20:04:00+04:00", "****Also, remind me to tell you to flag for Andy three emails we (actually ICIG) found that have portion marks (C) on a couple of paras. Doj was Very Concerned about this, willing to bet they will tell George") # Item 107
-  m.addnote("(C) is the marking for Confidential level classified information")
+  #m = strzok_to_page(child_file, "2016-06-13T20:04:00+04:00", "****Also, remind me to tell you to flag for Andy three emails we (actually ICIG) found that have portion marks (C) on a couple of paras. Doj was Very Concerned about this, willing to bet they will tell George") # Item 107
+  #m.addnote("(C) is the marking for Confidential level classified information")
   
   # Page 10 FBI-HJC119-CH-000431 2025.04.10 - Page text messages.pdf
   m = strzok_to_page(child_file, "2016-07-01T17:53:25+04:00", "Yep there is a svtc next week I am going to discuss how to review it, modeled on what we did with mye") # Item 122
@@ -2208,9 +5890,8 @@ def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO)
   m = strzok_to_page(child_file, "2016-07-18T19:15:00+04:00", "Btw, pulled 302s fo --Redacted-- for you, you should read and see if you want to highlight for Andy") # Item 128
 
   # Page 12 FBI-HJC119-CH-000433 2025.04.10 - Page text messages.pdf
-  page_to_mccabe(child_file, "2016-07-22T00:40:00+04:00", "The article I mentioned today,\n\nDonald Trump Sets Conditions for Defending NATO Allies Against Attack http:nyti.ms/2ai4u3g") # Item 135
-  page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "") # Item 139
-  m = page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "They're fine. Raced to bathe and bed, now about to read mye letter while I listen to Corey booker. He's doing very well.")
+  #page_to_mccabe(child_file, "2016-07-22T00:40:00+04:00", "The article I mentioned today,\n\nDonald Trump Sets Conditions for Defending NATO Allies Against Attack http:nyti.ms/2ai4u3g") # Item 135
+  m = page_to_strzok(child_file, "2016-07-26T01:50:00+04:00", "They're fine. Raced to bathe and bed, now about to read mye letter while I listen to Corey booker. He's doing very well.") # Item 139
   m.addnote("mye - Midyear Exam (Hillary Clinton)")
   strzok_to_page(child_file, "2016-07-26T01:52:21+04:00", "Sallys letter? I thought Bakers comments were ok\n\nIt's amazing to me how much better this convention is. N is FURIOUS at DNC for cooking the books against Bernie.") # Item 140
   #strzok_to_page(child_file, "2016-07-26T03:31:00+04:00", "They are not, so far, part of the media conspiracy for Clinton.") # Item 143
@@ -2222,7 +5903,7 @@ def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("J - Page's husband Joseph Burrow")
   
   # Page 14 FBI-HJC119-CH-000435 2025.04.10 - Page text messages.pdf
-  page_to_mccabe(child_file, "2016-08-02T00:50:00+04:00", "Since your counsel failed to send this to you last night. \U0001f60a\n\nHow Paul Manafort Wielded Power in Ukraine Before Advising Donald Trump http://nyti.ms/2aFy026") # Item 155
+  #page_to_mccabe(child_file, "2016-08-02T00:50:00+04:00", "Since your counsel failed to send this to you last night. \U0001f60a\n\nHow Paul Manafort Wielded Power in Ukraine Before Advising Donald Trump http://nyti.ms/2aFy026") # Item 155
   page_to_unknown(child_file, "2016-08-03T02:22:00+04:00", "Favor to ask you: I forwarded you an email on scion asking you to show something to andy in the am to see if he needs to reach out to cyber to possibly correct a statement before tomorrow's DNC brief on the hill. Can you show it to him in the morning? Call with questions, of course. Thanks.") # Item 156
   m = page_to_strzok(child_file, "2016-08-05T11:28:23+04:00", "Babe. You can. If you need a day, take a day. I can pickup the mye stuff, nothing else is that pressing.") # Item 158
   m.addnote("mye - Midyear Exam (Hillary Clinton)")
@@ -2237,12 +5918,12 @@ def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO)
   m = strzok_to_page(child_file, "2016-08-09T13:56:00+04:00", "God getting them to unlock razor cabinet takes an act of Congress. \U0001f612") # Item 168
   m.addnote("razor is Crossfire Razor - Michael Flynn, case number 97F-NY-2069860, Opened 16 Aug 2016")
   page_to_unknown(child_file, "2016-08-10T00:42:00+04:00", "Remind me tomorrow, I have a DNC fact/issue to share with you." ) #Item 170
-  page_to_mccabe(child_file, "2016-08-12T14:40:00+04:00", "Hey. What time does your flight leave? Baker pulling his usual \"oh, I didn't realize we were talking producing a carbon copy of the redacted 302s to state, which he is now fine with.\" Don't need to talk, just want to know when you are wheels up." ) #Item 176
-  page_to_mccabe(child_file, "2016-08-12T17:18:00+04:00", "Jim is inclined to give carbon copies of 302s to both --Redacted-- at time of production. That should alleviate their concerns. Just need to check it with the boss. Am drafting that email now. You will be on it." ) #Item 177
+  #page_to_mccabe(child_file, "2016-08-12T14:40:00+04:00", "Hey. What time does your flight leave? Baker pulling his usual \"oh, I didn't realize we were talking producing a carbon copy of the redacted 302s to state, which he is now fine with.\" Don't need to talk, just want to know when you are wheels up." ) #Item 176
+  #page_to_mccabe(child_file, "2016-08-12T17:18:00+04:00", "Jim is inclined to give carbon copies of 302s to both --Redacted-- at time of production. That should alleviate their concerns. Just need to check it with the boss. Am drafting that email now. You will be on it." ) #Item 177
   page_to_strzok(child_file, "2016-08-14T01:13:27+04:00", "But see, this article so rings true that then I think the chs is wrong...\n\nInside the Failing Mission to Save Donald Trump From Himself http://nyti.ms/2b5WSNA")
 
   # Page 16 FBI-HJC119-CH-000437 2025.04.10 - Page text messages.pdf
-  page_to_mccabe(child_file, "2016-08-29T23:37:00+04:00", "Well this is not good.\n\nAn article to share: FBI probes foreign hacks of state election systems\nFBI probes foreign hacks of state election systems\nhttp://wapo.st/2bMtYlH" ) #Item 190
+  #page_to_mccabe(child_file, "2016-08-29T23:37:00+04:00", "Well this is not good.\n\nAn article to share: FBI probes foreign hacks of state election systems\nFBI probes foreign hacks of state election systems\nhttp://wapo.st/2bMtYlH" ) #Item 190
 
   # Page 17 FBI-HJC119-CH-000438 2025.04.10 - Page text messages.pdf
   
@@ -2256,8 +5937,8 @@ def add_declassified_page_text_messages(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-30T01:42:15+04:00", "Hey I'm almost home, sorry. Remind me tomorrow what Victoria Nuland said.")
 
   # Page 19 FBI-HJC119-CH-000440 2025.04.10 - Page text messages.pdf
-  page_to_mccabe(child_file, "2016-10-09T18:14:00+04:00", "Not sure if you have your eras but --Redacted-- so they wanted to make sure you had it asap. I haven't had a chance to check it out yet. Let me know if you want them to get it to you some other way." ) #Item 216
-  page_to_mccabe(child_file, "2016-10-12T19:56:00+04:00", "Hey one clarification: --Redacted--" ) #Item 220
+  #page_to_mccabe(child_file, "2016-10-09T18:14:00+04:00", "Not sure if you have your eras but --Redacted-- so they wanted to make sure you had it asap. I haven't had a chance to check it out yet. Let me know if you want them to get it to you some other way." ) #Item 216
+  #page_to_mccabe(child_file, "2016-10-12T19:56:00+04:00", "Hey one clarification: --Redacted--" ) #Item 220
   page_to_mccabe(child_file, "2016-10-12T23:08:00+04:00", "OI now has a robust explanation re any possible bias of the chs in the package. Don't know what the holdup is now, other than --Redacted-- continued concerns. Strong operational need to have in place before Monday if at all possible, which means to ct tomorrow. I communicated you and boss's green light to Stu earlier, and just sent an email to --Redacted-- asking where things stood. This might take a high-level push. Will keep you posted." ) #Item 221
 
   # Page 20 FBI-HJC119-CH-000441 2025.04.10 - Page text messages.pdf
@@ -2652,7 +6333,7 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   lync_strzok_to_page( child_file, "2017-02-01T23:38:07+05:00", "And the thing Bruce O sent is pretty cool") # Item 276
   lync_page_to_strzok( child_file, "2017-02-01T23:38:08+05:00", "Am I on it?") # Item 277
   lync_strzok_to_page( child_file, "2017-02-01T23:38:09+05:00", "No And and and but i don't want to make your late night later") # Item 278
-  lync_strzok_to_unknown( child_file, "2017-02-02T18:53:15+05:00", "He gave me a different presentation of the facts") # Item 280
+  #lync_strzok_to_unknown( child_file, "2017-02-02T18:53:15+05:00", "He gave me a different presentation of the facts") # Item 280
   lync_strzok_to_unknown( child_file, "2017-02-02T18:54:00+05:00", "(in terms of urgency)") # Item 281
   lync_unknown_to_strzok( child_file, "2017-02-02T18:55:00+05:00", "The urgency was high when presented to me too.") # Item 282
   lync_strzok_to_page( child_file, "2017-02-03T21:06:00+05:00", "I have not met the new --Redacted-- detailee. Jen is the Mayor of the 7th floor.") # Item 283
@@ -2691,7 +6372,7 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   lync_page_to_strzok( child_file, "2017-03-02T14:43:00+05:00", "Hey could you send me the new annotated Times article?") # Item 320
   lync_strzok_to_page( child_file, "2017-03-02T15:02:00+05:00", "yes. Call me...") # Item 321
   lync_strzok_to_page( child_file, "2017-03-02T15:21:00+05:00", "watching cnn?") # Item 322
-  lync_strzok_to_page( child_file, "2017-03-02T16:37:00+05:00", "Hey have you had a chacne to finalize that Razor timeline? If not, can I just get a softcopy of whatever you have? Thx") # Item 323
+  #lync_strzok_to_page( child_file, "2017-03-02T16:37:00+05:00", "Hey have you had a chacne to finalize that Razor timeline? If not, can I just get a softcopy of whatever you have? Thx") # Item 323
   lync_page_to_strzok( child_file, "2017-03-02T17:39:00+05:00", "hey can I come down and get a copy of the --Redacted--?") # Item 324
   lync_strzok_to_page( child_file, "2017-03-02T17:40:00+05:00", "yes. Can you email me the timeline? Or, wait, because I have things to adc") # Item 325
   lync_page_to_strzok( child_file, "2017-03-02T17:43:00+05:00", "you watching?! he's being an adult so far...") # Item 326
@@ -2720,7 +6401,7 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   m = lync_moyer_to_page( child_file, "2017-03-15T21:23:00+05:00", "Kevin is (mostly) completed with the redactions of the Dragon initiation/renewal. We still need copies of theSecondary Orders from OI, and then I will redact those. I have one quick thing to make you aware of when you have a minute.") # Item 348
   m.addnote("Dragon - Crossfire Dragon, Carter Page, case number 97F-HQ-2067747, Opened 10 Aug 2016")
   lync_page_to_doinidis( child_file, "2017-03-16T19:52:00+05:00", "CHS") # Item 349
-  lync_page_to_strzok( child_file, "2017-03-16T19:53:01+05:00", "--Redacted-- is saying that it did.") # Item 351
+  #lync_page_to_strzok( child_file, "2017-03-16T19:53:01+05:00", "--Redacted-- is saying that it did.") # Item 351
   lync_strzok_to_page( child_file, "2017-03-17T13:40:00+05:00", "Hi. Looks like Bill going to London") # Item 352
   lync_strzok_to_page( child_file, "2017-03-21T14:59:00+05:00", "Hi there. Good convo with --Redacted-- Let me know when you have a sec, talked a lot about perceptions of here outside og HQ/WF/DC circles.") # Item 353
   lync_strzok_to_page( child_file, "2017-03-22T19:05:00+05:00", "Nunes speaking now in front of WH. We need to talk about the response to that Mar 15 lette") # Item 354
@@ -2781,7 +6462,7 @@ def add_declassified_page_strzok_lync_messages(parent_file: truxton.TruxtonChild
   m = lync_clinesmith_to_page( child_file, "2017-05-17T17:44:00+04:00", "Is there time tomorrow, say 3PM or after, that you can schedule a signing for Cross Wind with the Acting Director? It appears the field is still finalizing it today.") # Item 414
   m.addnote("Cross Wind is Walid Phares. Sounds like they are preparing a FISA request on him.")
   lync_page_to_clinesmith( child_file, "2017-05-17T18:00:00+04:00", "totally doable. Let's talk later.") # Item 415
-  lync_strzok_to_page( child_file, "2017-05-17T18:11:00+04:00", "3:00 crossfire case update with DAG is cancelled") # Item 416
+  #lync_strzok_to_page( child_file, "2017-05-17T18:11:00+04:00", "3:00 crossfire case update with DAG is cancelled") # Item 416
   lync_unknown_to_page( child_file, "2017-05-17T18:31:00+04:00", "Tash is going to ride with the DAG") # Item 417
   m = lync_page_to_moffa( child_file, "2017-05-22T11:27:00+04:00", "Would you bring the Flynn cuts too?") # Item 418
   m.addnote("cuts is an FBI term for audio recordings. These are probably recordings of the Flynn-Kislyak phone calls.")
@@ -3386,6 +7067,7 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   add_name_subject_and_email( child_file, "Brian Auten", SUBJECT_ID_AUTEN, "bjauten@ic.fbi.gov" ) # Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
   add_name_subject_and_email( child_file, "Lisa C. Page", SUBJECT_ID_PAGE, "lcpage@fbi.sgov.gov" ) # Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
   add_name_subject_and_email( child_file, "Jonathan Moffa", SUBJECT_ID_MOFFA, "jcmoffa@fbi.sgov.gov" )
+  add_name_subject_and_email( child_file, "Andrew 'Andy' G. McCabe", SUBJECT_ID_MCCABE, "amg.dd@gmail.com" )
 
   add_name_and_email( child_file, "Sally Anne Moyer", "samoyer@fbi.sgov.gov" ) # Page 85 of 460365255-Flynn-motion-to-dismiss.pdf
 
@@ -3420,8 +7102,8 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   strzok_to_unknown(child_file, "2017-01-04T14:22:50+05:00", "7th floor involved." )
   m = unknown_to_strzok(child_file, "2017-01-04T14:23:00+05:00", "I heard that might be the case yesterday. Did DD send that material over?" )
   m.addnote("Jan 3 was when Clapper learned of Flynn-Kislyak phone call")
-  m = unknown_to_strzok(child_file, "2017-01-04T14:23:10+05:00", "--Redacted-- has been handling RAZOR's closure -- do you want me to reach out to him?" )
-  m.addnote("RAZOR is Crossfire Razor - Michael Flynn, case number 97F-NY-2069860, Opened 16 Aug 2016")
+  #m = unknown_to_strzok(child_file, "2017-01-04T14:23:10+05:00", "--Redacted-- has been handling RAZOR's closure -- do you want me to reach out to him?" )
+  #m.addnote("RAZOR is Crossfire Razor - Michael Flynn, case number 97F-NY-2069860, Opened 16 Aug 2016")
   strzok_to_unknown(child_file, "2017-01-04T14:24:00+05:00", "Yes" )
   unknown_to_strzok(child_file, "2017-01-04T14:24:10+05:00", "Will do" )
   m = strzok_to_unknown(child_file, "2017-01-04T14:24:20+05:00", "Hey don't close RAZOR" )
@@ -3450,8 +7132,8 @@ def add_flynn_motion_to_dismiss(parent_file: truxton.TruxtonChildFileIO) -> None
   #strzok_to_page(child_file, "2017-01-23T06:37:40+05:00", "distinction that I think is clear. But maybe I'm wrong.")
 
   # Page 79 460365255-Flynn-motion-to-dismiss.pdf
-  m = strzok_to_unknown(child_file, "2017-01-24T06:46:00+05:00", "Hi - sorry I missed you yesterday. About to email you questions for Andy to think about in advance of his call with Flynn. I'm sure he's thought of them already, but just in case" )
-  m.addnote("There's an email on page 88 that contains these questions. Addressee is completely redacted.")
+  #m = strzok_to_unknown(child_file, "2017-01-24T06:46:00+05:00", "Hi - sorry I missed you yesterday. About to email you questions for Andy to think about in advance of his call with Flynn. I'm sure he's thought of them already, but just in case" )
+  #m.addnote("There's an email on page 88 that contains these questions. Addressee is completely redacted.")
   page_to_strzok(child_file, "2017-02-10T17:37:00+05:00", "This document pisses me off.? You didn't even attempt to make it cogent and readable.? This is lazy work on you part." )
   strzok_to_page(child_file, "2017-02-10T22:10:00+05:00", "Lisa, you didnt see it before my edits that went into what I sent you. I was 1) trying to completely re-write the thing so as to save --Redacted-- voice and 2) get it out to you for general review and comment in anticipation of needing it soon. I greatly appreciate your time in reviewing and your edits. I incorporated them. Thank you.")
   strzok_to_page(child_file, "2017-02-10T22:11:00+05:00", "shoudl say 1) trying to not completely re-write....")
@@ -4032,6 +7714,8 @@ def add_fbi_ig_report_fisa(parent_file: truxton.TruxtonChildFileIO) -> None:
   m.addnote("At this point (2016-07-13) multiple FBI agents are aware that the Steele reports are of a political nature, Republican or Hillary") # At this point (2016-07-13) multiple FBI agents are aware that the Steele reports are of a political nature, Republican or Hillary
   add_event( child_file, "2016-08-03T12:00:00+04:00", "2016-08-03T12:00:00+04:00", "Meeting about Steele, Simpson and Perkins Coee", "Meeting in NYFO attended by ASAC 1, SAC 1, Chief Division Counsel (CDC), Associate Division Counsel (ADC), and Supervisory Special Agent (SSA). FBI IG Report page 98", EVENT_TYPE_FBI )
   add_event( child_file, "2016-08-02T12:00:00+04:00", "2016-08-02T12:00:00+04:00", "Strzok informed of FBI field agent reported contact by Simpson", "Probably Gaeta, he had been contacted by former CHS that Simpson's firm hired to investigate Trump's long standing relationship with Russia. Crossfire Hurricane team. FBI IG Report page 98, Footnote 223", EVENT_TYPE_FBI )
+  # 848636282-Crossfire-Hurricane-Binder-2.pdf page 171, email from Benjamin E. Gessford shows this happened Oct 3rd, 2016 in Rome
+  # Also 848636282-Crossfire-Hurricane-Binder-2.pdf page 176 the FC-1057 is written
   add_event( child_file, "2016-10-07T12:00:00+04:00", "2016-10-07T12:00:00+04:00", "Case Agent 2 tells Steele about Papadopoulos, Flynn, Carter Page and Manafort investigations", "In a European city, probably London, Crossfire Hurricane team arrived the morning of this meeting. FBI IG Report page 109, Also SSCI Volume 5 page 911 shows date as single digit we assume 7th because it is a Friday. All Steele reports after this mentions one of these people", EVENT_TYPE_FBI )
 
   add_event( child_file, "2016-08-10T12:00:00+04:00", "2016-08-10T12:00:00+04:00", "FBI opens Crossfire Dragon (Page Investigation)", "FBI IG Report page 59, Foreign Agents Registration Act (FARA) case on Flynn", EVENT_TYPE_FBI )
@@ -5085,7 +8769,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   page_to_strzok(child_file, "2017-01-25T07:24:54+05:00", "Jr and he were talking about D and DD travel so it was the perfect opportunity to mention.\n\nYeah, I know he will. I'm excited to tell him. He's going to be really grateful. Our relationship is really quite a special one. We really truly look out for each other. Him and my bonus, me and this, or other things he finds really hard to talk about bc of his personality, deference to andy, etc.")
   strzok_to_page(child_file, "2017-01-25T07:31:43+05:00", "You two need to talk about what you're doing in 13 months...\n\nAnd I'm SO late. No way I get out the door before 8...\U0001f612")
 
-  # Page 3, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 3, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   strzok_to_page(child_file, "2017-01-25T07:32:30+05:00", "I hope you stay. Is there any way you stay?\n\nAnd I can't help but get the feeling JB may leave as well before the D....")
   page_to_strzok(child_file, "2017-01-25T07:32:46+05:00", "Yeah, yeah, yeah...\n\nSheesh! I'm almost done! Just have to go wrestle the stinker now...")
   strzok_to_page(child_file, "2017-01-27T09:32:38+05:00", "You should cry. It's positive. It's awesome you're there.\n\nAnd yeah, you could, with 1.1. Or you could settle for 500 and not work crazy sick hours. All that really p*sses me off. I don't know why I simply can't be happy for him. I think it's my sense of injustice about it.")
@@ -5099,7 +8783,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   m = page_to_strzok(child_file, "2017-02-04T20:19:00+05:00", "Ha, did not realize that --Redacted-- is one of the ausas")
   m.addnote("AUSA - Assistant US Attorney")
 
-  # Page 4, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 4, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   strzok_to_page(child_file, "2017-02-04T20:42:00+05:00", "And hi")
   m = strzok_to_page(child_file, "2017-02-04T20:42:00+05:00", "Small world. --Redacted-- was in their scif working on")
   m.addnote("SCIF - Sensitive Compartmented Information Facility")
@@ -5117,7 +8801,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   strzok_to_page(child_file, "2017-02-06T18:22:00+05:00", "And don't conflate my email to Bill with my gratitude for you. That's totally unfair.")
   page_to_strzok(child_file, "2017-02-06T18:22:59+05:00", "I really don't understand how she has a monopoly on all work related to this country.")
   
-  # Page 5, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 5, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   strzok_to_page(child_file, "2017-02-06T18:29:00+05:00", "I think you're blowing this out of proportion. But if you want to be mad at me, so be it.")
   strzok_to_page(child_file, "2017-02-06T18:29:16+05:00", "That's the way it breaks down. Sort of how I'm supposed to be on the other one (don't ask me how she ended up going to DOD with Andy to brief that general).")
   strzok_to_page(child_file, "2017-02-06T18:40:00+05:00", "Sorry, just getting this.")
@@ -5313,7 +8997,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   #page_to_strzok(child_file, "2017-03-05T09:22:00+05:00", "\U0001f60a Thanks.")
   page_to_strzok(child_file, "2017-03-05T09:44:00+05:00", "You'll go home when you and Bill are done and then")
 
-  # Page 14, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 14, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   strzok_to_page(child_file, "2017-03-05T09:45:00+05:00", "Yes, exactly my plan.\n\nI'll shower for you, even.")
   m = page_to_strzok(child_file, "2017-03-05T14:01:17+05:00", "No, I'm good. Just going to hit abp.")
   m.addnote("abp - Advisory Policy Board?")
@@ -5329,14 +9013,14 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   page_to_strzok(child_file, "2017-03-16T20:17:18+04:00", "Yes. Talking with --Redacted--")
   # Better version in lync_text_messages_of_peter_strzok_from_2-13-16_to_12-6-17.pdf
   # strzok_to_page(child_file, "2017-03-17T19:44:00+04:00", "Hey did I hear right that the product we wrote two nights ago was sent to Graham and Whitehouse (or anyone else)?")
-  page_to_strzok(child_file, "2017-03-17T20:16:14+04:00", "It was not sent. Still working out how to communicate the message to them with doj.")
+  #page_to_strzok(child_file, "2017-03-17T20:16:14+04:00", "It was not sent. Still working out how to communicate the message to them with doj.")
   strzok_to_page(child_file, "2017-03-19T16:26:00+04:00", "I kn")
   strzok_to_page(child_file, "2017-03-19T23:00:13+04:00", "I'm not going to respond to the whole group. The Klayman/Montgomery stuff in the email Jim just sent is utter BS. Best to say nothing and brief later if necessary.")
   strzok_to_page(child_file, "2017-03-20T06:21:40+04:00", "But not sure if he's a fan in the same way")
   page_to_strzok(child_file, "2017-03-20T06:29:12+04:00", "He is.")
   strzok_to_page(child_file, "2017-03-20T09:39:36+04:00", "Whew, made it! Everything on the Hill is SO CLOSE.;)")
 
-  # Page 15, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 15, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   strzok_to_page(child_file, "2017-03-20T16:24:24+04:00", "We're obviously JV... ;)")
   strzok_to_page(child_file, "2017-03-20T16:34:01+04:00", "K")
   page_to_strzok(child_file, "2017-03-20T16:43:14+04:00", "Man I really wish I was going with andy. Wah wah...")
@@ -5429,7 +9113,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   strzok_to_page(child_file, "2017-04-13T18:11:44+04:00", "Why? Because it's a performance based? Or just different concept of what \"work\" means?")
   strzok_to_page(child_file, "2017-04-13T18:12:14+04:00", "Or different skill sets?\n\nI want to know because I'm close.. .")
   
-  # Page 19, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 19, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   page_to_strzok(child_file, "2017-04-13T19:43:59+04:00", "No, because most agents only develop tactical skills, not strategic/risk mgmt like we've been doing.")
   page_to_strzok(child_file, "2017-04-14T09:41:42+04:00", "Sure")
   strzok_to_page(child_file, "2017-04-16T07:16:00+04:00", "C) I know. Was it --Redacted-- (think that's his name, the one who")
@@ -5442,7 +9126,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   # page_to_strzok(child_file, "2017-04-22T10:53:31+04:00", "Article is out!")
   # strzok_to_page(child_file, "2017-04-22T11:26:10+04:00", "What?!?")
   page_to_strzok(child_file, "2017-04-25T07:48:00+04:00", "You going to front the article/ what you do?")
-  strzok_to_page(child_file, "2017-04-22T16:48:00+04:00", "Is the source available for recontact?")
+  #strzok_to_page(child_file, "2017-04-25T16:48:00+04:00", "Is the source available for recontact?")
   page_to_strzok(child_file, "2017-04-25T16:52:00+04:00", "Yes, I'm sure he will be. Once you have results can talk to boss. Could be a personal cell issue.")
   strzok_to_page(child_file, "2017-04-25T16:53:00+04:00", "Talk quickly? I have results")
   page_to_strzok(child_file, "2017-04-25T17:03:00+04:00", "Can't. Walking into wrap now.")
@@ -5453,7 +9137,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   strzok_to_page(child_file, "2017-04-26T10:53:09+04:00", "Done. Walking back with Bill.")
   strzok_to_page(child_file, "2017-04-26T11:33:25+04:00", "K")
 
-  # Page 20, Outgoing is To Lisa Page, Incoming is From Lisa Page
+  # Page 20, Outgoing is To Lisa Page, Incoming is From Lisa Page PS-LP-text-messages-Dec-2016-May-2017.pdf
   strzok_to_page(child_file, "2017-04-27T08:50:08+04:00", "Ok. I don't think we're talking to him, are we?\n\nJust let me know what number to call. I'll call from iPhone so I can read his email on this")
   strzok_to_page(child_file, "2017-04-27T11:56:16+04:00", "Hey the call dropped")
   page_to_strzok(child_file, "2017-04-27T13:20:57+04:00", "I already did.")
@@ -5470,9 +9154,9 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   m.addnote("Strzok and Page used private iPhones to communicate without leaving evidence")
   strzok_to_page(child_file, "2017-04-27T16:58:45+04:00", "Yes. Thanks.")
   strzok_to_page(child_file, "2017-04-27T22:10:38+04:00", "And yes dammit I know full well I'm bringing outside into work. I'm angry.")
-  m = strzok_to_page(child_file, "2017-05-04T07:40:45+04:00", "Can I imsg a work q?")
-  m.tag("iMessage", "Strzok and Page used private iPhones to communicate without leaving evidence", truxton.TAG_ORIGIN_HUMAN)
-  m.addnote("Strzok and Page used private iPhones to communicate without leaving evidence")
+  #m = strzok_to_page(child_file, "2017-05-04T07:40:45+04:00", "Can I imsg a work q?")
+  #m.tag("iMessage", "Strzok and Page used private iPhones to communicate without leaving evidence", truxton.TAG_ORIGIN_HUMAN)
+  #m.addnote("Strzok and Page used private iPhones to communicate without leaving evidence")
   strzok_to_page(child_file, "2017-05-04T09:38:30+04:00", "And see?!?! I opened up and shared personal stuff with --Redacted-- ! Working on brave trusting.....")
   strzok_to_page(child_file, "2017-05-05T09:57:00+04:00", "Good talk with --Redacted-- :)")
   strzok_to_page(child_file, "2017-05-05T12:10:00+04:00", "Also just tried calling, talked with --Redacted--")
@@ -5814,7 +9498,7 @@ def add_strzok_page_recovered_messages_dec_to_may(parent_file: truxton.TruxtonCh
   #page_to_strzok(child_file, "2017-05-16T22:02:00+04:00", "Dude I get it. I am only one person.")
   strzok_to_page(child_file, "2017-05-16T22:02:00+04:00", "What's her #")
   #strzok_to_page(child_file, "2017-05-16T22:02:00+04:00", "--Redacted--\n\nWe also need class review. Chaffetz has asked for all writeups")
-  page_to_strzok(child_file, "2017-05-16T22:02:00+04:00", "So call her tonight and ask. It didn't come up directly. It was very frenetic.")
+  #page_to_strzok(child_file, "2017-05-16T22:02:00+04:00", "So call her tonight and ask. It didn't come up directly. It was very frenetic.")
   #strzok_to_page(child_file, "2017-05-16T22:03:00+04:00", "I know you do. It's why we're friends.\n\nIn the foxhole together.\n\nAnd I'm serious about wanting a dump tomorrow. I'll get nothing otherwise.")
   page_to_strzok(child_file, "2017-05-16T22:03:00+04:00", "--Redacted--")
   strzok_to_page(child_file, "2017-05-16T22:05:00+04:00", "Just left her a message")
@@ -8564,10 +12248,10 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2015-12-13T01:36:54+05:00", "And funny re --Redacted-- husband, bc Kasich has long been suspected of being gay. Lived with his campaign manager for a looooong time, until maybe 10+ years ago when he married a supermodel wife and immediately popped out kids, twins even, I think.")
   page_to_strzok(child_file, "2015-12-21T01:19:26+05:00", "What an utter idiot. An article to share: Donald Trump on Putin 'Nobody has proven that he's killed anyone'")
   strzok_to_page(child_file, "2015-12-21T01:47:08+05:00", "No doubt. \U0001f612 Ok to gmail some pics?")
-  page_to_strzok(child_file, "2015-12-28T18:26:22+05:00", "It's sick, but I really like policy issues. And having tight deadlines. Sigh...")
+  #page_to_strzok(child_file, "2015-12-28T18:26:22+05:00", "It's sick, but I really like policy issues. And having tight deadlines. Sigh...")
 
   # Page 31
-  strzok_to_page(child_file, "2015-12-28T19:18:11+05:00", "Is that what doj wanted?")
+  #strzok_to_page(child_file, "2015-12-28T19:18:11+05:00", "Is that what doj wanted?")
   # Unredacted version elsewhere
   # m = strzok_to_page(child_file, "2015-12-28T19:18:32+05:00", "You get all your oconus --Redacted-- approved?")
   # m.addnote("Could the lures be Stefan Halper and Azra Turk?")
@@ -8815,38 +12499,38 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   #strzok_to_page(child_file, "2016-08-11T00:56:56+04:00", "--Redacted-- YUUUUGE.\n\nThough we may save that for the man, if we ever open on him ;)")
   #strzok_to_page(child_file, "2016-08-11T00:57:27+04:00", "OMG I CANNOT BELIEVE WE ARE SERIOUSLY LOOKING AT THESE ALLEGATIONS AND THE PERVASIVE CONNECTIONS")
 
-  # Page 70
+  # Page 70 Appendix C - Documents.pdf
   #strzok_to_page(child_file, "2016-08-11T00:57:41+04:00", "What the hell has happened to our country!?!?!??")
   #page_to_strzok(child_file, "2016-08-14T10:55:22+04:00", "God this makes me so angry. Donald Trump Is Making America Meaner http://nyti.ms/2b6gG38")
   strzok_to_page(child_file, "2016-08-14T11:00:46+04:00", "And I am worried about what Trump is encouraging in our behavior. The things that made me proud about our tolerance for dissent - what makes us different from Sunnis and Shias losing each other up - is disappearing.")
   #strzok_to_page(child_file, "2016-08-14T11:01:54+04:00", "I'm worried about what happens if HRC is elected. And perfect, another excessive heat day.")
 
-  # Page 71
+  # Page 71 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   #strzok_to_page(child_file, "2016-08-15T10:29:55+04:00", "I want to believe the path you threw out for consideration in Andy's office - that there's no way he gets elected - but I'm afrais we can't take that risk. It's like an insurance policy in the unlikely event you die before you're 40...")
   #page_to_strzok(child_file, "2016-08-17T10:28:37+04:00", "An article to share: Trump shakes up campaign, demotes top adviser Trump shakes up campaign, demotes top adviser http://wapo.st/2bzAUGD")
   #strzok_to_page(child_file, "2016-08-17T10:29:25+04:00", "Just reading it")
 
-  # Page 72
+  # Page 72 Appendix C - Documents.pdf
   #strzok_to_page(child_file, "2016-08-17T11:02:31+04:00", "--Redacted--")
   #strzok_to_page(child_file, "2016-08-26T16:42:40+04:00", "Just went to a southern Virginia Walmart. I could SMELL the Trump support...")
   page_to_strzok(child_file, "2016-08-26T16:54:18+04:00", "Yup. Out to lunch with --Redacted-- We both hate everyone and everything.")
   #strzok_to_page(child_file, "2016-08-26T17:02:52+04:00", "I want to be there and hate with you, or charm you back to happy. Looked for the two trump yard signs I saw on the way out to take a picture, but couldn't find them")
 
-  # Page 73
+  # Page 73 Appendix C - Documents.pdf
   page_to_strzok(child_file, "2016-08-26T20:51:12+04:00", "Just riffing on the hot mess that is our country.")
   strzok_to_page(child_file, "2016-08-26T20:52:28+04:00", "Yeah....it's scary real down here")
   #strzok_to_page(child_file, "2016-08-30T09:44:50+04:00", "Here we go: Harry Reid Cites Evidence of Russian Tampering in U.S. Vote and Seeks F.B.I. Inquiry http://mobile.nytimes.com/2016/08/30/us/politics/harry-reid-russia-tampering-election-fbi.html")
   #strzok_to_page(child_file, "2016-08-30T09:45:20+04:00", "But Mr. Reid argued that the connections between some of Donald J. Trump's former and current advisers and the Russian leadership should, by itself, prompt an investigation. He referred indirectly in his letter to a speech given in Russia by one Trump adviser, Carter Page, a consultant and investor in the energy giant Gazprom, who criticized American sanctions policy toward Russia. 'Trump and his people keep saying the election is rigged,' Mr. Reid said. 'Why is he saying that? Because people are telling him the election can be messed with.' Mr. Trump's advisers say they are concerned that unnamed elites could rig the election for his opponent, Hillary Clinton.")
 
-  # Page 74
+  # Page 74 Appendix C - Documents.pdf
   page_to_strzok(child_file, "2016-08-30T09:45:44+04:00", "--Redacted-- called him and told him he would be sending a letter.")
   strzok_to_page(child_file, "2016-08-30T09:46:15+04:00", "Trying isn't enough! Or rather, it may be, but I'm not content with trying. Seriously. I'm walking over and paying for it today. You need to tell me a time.")
   #strzok_to_page(child_file, "2016-08-30T09:46:29+04:00", "Bill didn't mention it \U0001f612")
   #strzok_to_page(child_file, "2016-08-30T09:51:55+04:00", "And holy cow, let me send you the Reid letter!")
 
-  # Page 75
+  # Page 75 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   #page_to_strzok(child_file, "2016-08-31T03:27:14+04:00", "Did you ever look at this? It's incredibly powerful.And really, really depressing.\n\nAt least 110 Republican Leaders Won\u2019t Vote for Donald Trump. Here\u2019s When They Reached Their Breaking Point. http://nyti.ms/2bTNAbb")
@@ -8856,7 +12540,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("N could be a garble for M - Melissa, his wife")
   strzok_to_page(child_file, "2016-09-12T11:25:13+04:00", "Npr says Trump hotel opens today. It doesn't look ready...")
 
-  # Page 76
+  # Page 76 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-09-12T11:26:16+04:00", "That's one place I hope I never stay in.")
@@ -8864,24 +12548,24 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   #page_to_strzok(child_file, "2016-09-27T00:40:23+04:00", "Did you read this? It's scathing. And I'm scared.\n\nWhy Donald Trump Should Not Be President http://nyti.ms/2dbQPuR")
   page_to_strzok(child_file, "2016-09-27T00:40:43+04:00", "Man, I should have started drinking earlier. I'm genuinely stressed about the debate.")
 
-  # Page 77
+  # Page 77 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
-  m = strzok_to_page(child_file, "2016-09-27T10:37:52+04:00", "Can I ask you a question about yesterday's discussion? Why rule out a job at Doj or ODAG?")
-  m.addnote("ODAG - Office od Deputy Attorney General")
+  #m = strzok_to_page(child_file, "2016-09-27T10:37:52+04:00", "Can I ask you a question about yesterday's discussion? Why rule out a job at Doj or ODAG?")
+  #m.addnote("ODAG - Office od Deputy Attorney General")
   strzok_to_page(child_file, "2016-09-27T10:38:13+04:00", "Too political?")
   page_to_strzok(child_file, "2016-09-27T10:39:43+04:00", "No way. I don't see what I get out of that, and I'd have to deal with all the political BS.")
   strzok_to_page(child_file, "2016-09-27T10:40:32+04:00", "Political connections. Better entree into other jobs? Maybe not the latter.")
 
-  # Page 78
+  # Page 78 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
-  page_to_strzok(child_file, "2016-09-29T01:10:28+04:00", "And suddenly I'm realizing, they're like Trump demographic people, just democrats. \U0001f612")
-  strzok_to_page(child_file, "2016-09-29T01:10:29+04:00", "Like --Redacted--!!!!!!!!!\n\nOh sweet jes*s I need to send you what --Redacted-- has been sending. The liberal media is all in the tank for Hillary. Because, you know, Trump isn't batsh*t crazy for our country...")
+  #page_to_strzok(child_file, "2016-09-29T01:10:28+04:00", "And suddenly I'm realizing, they're like Trump demographic people, just democrats. \U0001f612")
+  #strzok_to_page(child_file, "2016-09-29T01:10:29+04:00", "Like --Redacted--!!!!!!!!!\n\nOh sweet jes*s I need to send you what --Redacted-- has been sending. The liberal media is all in the tank for Hillary. Because, you know, Trump isn't batsh*t crazy for our country...")
   page_to_strzok(child_file, "2016-09-29T01:11:38+04:00", "Please don't. I really don't want to know what is out there.")
   strzok_to_page(child_file, "2016-09-29T01:13:46+04:00", "--Redacted-- is crazy, btw")
 
-  # Page 79
+  # Page 79 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-09-29T01:14:28+04:00", "EVERYTHING about him is a dem. Except maybe string national defense (except Hillary is that but she can't be, because, you know, CLINTON!).")
@@ -8889,7 +12573,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-29T01:18:16+04:00", "I know!")
   strzok_to_page(child_file, "2016-09-29T01:18:29+04:00", "I WANT YOU TO MEET HIM AND CONVINCE HIM!")
 
-  # Page 80
+  # Page 80 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-09-29T01:19:06+04:00", "You're very persuasive.\n\nWe'll have to stay here as my iPhone is apparently syncing and downloading for the rest of the night\U0001f612")
@@ -8898,7 +12582,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m = strzok_to_page(child_file, "2016-10-06T23:18:44+04:00", "What?!?! Why?\n\nInvite --Redacted-- and Giacalone to your housewarming! That'll be fun!")
   m.addnote("Giacalone is John Giacalone FBI Assistant Director of Counterterrorism Division")
 
-  # Page 81
+  # Page 81 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   m = page_to_strzok(child_file, "2016-10-06T23:20:17+04:00", "We got a list of kids with their parents' names. How many Matt Apuzzo's could there be in DC? Showed J a picture, he said he thinks he has seen a guy who kinda looks like that, but always really schlubby. I said that sounds like every reporter I have ever seen.")
@@ -8908,7 +12592,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m = page_to_strzok(child_file, "2016-10-06T23:22:31+04:00", "Wife is Becky Found address looking for her. Lawyer.")
   m.addnote("Unredacted with simple Google search")
   
-  # Page 82
+  # Page 82 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-10-06T23:24:01+04:00", "Address?")
@@ -8918,7 +12602,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-06T23:24:58+04:00", "--Redacted-- I think.")
   page_to_strzok(child_file, "2016-10-06T23:26:39+04:00", "Just have to look up if it is inbounds for --Redacted-- ")
 
-  # Page 83
+  # Page 83 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-10-06T23:26:41+04:00", "I wouldn't search on your work phone....no idea what that might trigger in --Redacted-- shop.... ;]")
@@ -8927,7 +12611,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("MY - Midyear Exam (Hillary Clinton)")
   strzok_to_page(child_file, "2016-10-07T10:03:33+04:00", "There are a bunch of really ignorant people out there blinded by their politics.")
 
-  # Page 84
+  # Page 84 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-10-07T10:03:56+04:00", "You can't read that sh*t. And honestly, let them. The bu would be better off without them.")
@@ -8935,7 +12619,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-07T10:04:37+04:00", "Sadly reminds me how deeply politics, like religion, can sometimes blind objectivity.")
   strzok_to_page(child_file, "2016-10-07T10:04:38+04:00", "I can't help it. It's click bait. I emailed it to you.")
 
-  # Page 85
+  # Page 85 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-10-08T12:35:47+04:00", "Currently reading about Trump. Wondering if he stepped down if Pence could actually get elected.")
@@ -8943,7 +12627,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-08T12:37:10+04:00", "I agree. I think it would actually energize the Republican vote.\n\nAnd no, not really re path forward.")
   strzok_to_page(child_file, "2016-10-09T21:07:51+04:00", "And funny quote from my cousin-in-law: \"No way Trump will drop out. Hey Republicans: how does it feel to carry something to term?\"")
 
-  # Page 86
+  # Page 86 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   #strzok_to_page(child_file, "2016-10-10T01:23:55+04:00", "Trump saying agents at FBI are furious at the MYE outcome and he's getting a special prosecutor.")
@@ -8951,7 +12635,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-12T03:16:35+04:00", "Wow, more forceful than I have seen him. Wonder what --Redacted-- would say about it.\n\nDonald Trump\u2019s Sad, Lonely Life http://nyti.ms/2dTCZxP")
   #page_to_strzok(child_file, "2016-10-14T00:40:26+04:00", "Not sure why I thought this was so neat. Suppose it's just the law nerd in me.\n\nThe Times\u2019s Lawyer Responds to Donald Trump http://nyti.ms/2eOWNza")
 
-  # Page 87
+  # Page 87 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-10-14T00:40:28+04:00", "God, she's an incredibly impressive woman. The Obamas in general, really. While he has certainly made mistakes, I'm proud to have him as my president. \n\nVoice Shaking, Michelle Obama Calls Trump Comments on Women\u2018Intolerable\u2019 http://nyti.ms/2eOMtoY")
@@ -9060,16 +12744,17 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-25T00:52:31+04:00", "Why? What happened?")
   page_to_strzok(child_file, "2016-10-25T00:54:08+04:00", "Nothing more. Just all of it.")
 
-  # Page 100
+  # Page 100 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   # Page 417 has unredacted version of this message
   # page_to_strzok(child_file, "2016-10-25T00:55:02+04:00", "I asked --Redacted-- and --Redacted-- to meet tomorrow morning. Please let me just meet with them alone. Please.")
   strzok_to_page(child_file, "2016-10-25T00:59:55+04:00", "Sure")
+  # The following is an identical message (on page 418) but different time stamp.
   page_to_strzok(child_file, "2016-10-25T10:11:45+04:00", "Christ. Make sure you scroll down and read that guy's comment about the polls.\n\nDonald Trump Dismisses Latest Accuser:\u2018Oh, I\u2019m Sure She\u2019s Never Been Grabbed Before\u2019 http://nyti.ms/2eyZhVL")
   page_to_strzok(child_file, "2016-10-26T11:39:00+04:00", "Let's talk about this later.\n\n\u2018We Need to Clean This Up\u2019: Clinton Aide\u2019s Newly Public Email Shows Concern http://nyti.ms/2dG6zaI")
 
-  # Page 101
+  # Page 101 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-10-26T12:58:14+04:00", "And yup, me and --Redacted/Apuzzo-- at drop-off today...")
@@ -9077,7 +12762,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-26T13:06:46+04:00", "Hit piece on Andy from VA GOP in Hampton newspaper")
   page_to_strzok(child_file, "2016-10-26T13:13:47+04:00", "That sucks. I can talk btw.")
 
-  # Page 102
+  # Page 102 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-10-27T00:06:05+04:00", "Interesting - one of the Podesta emails talks about him hosting Peter Kadzik at his house for dinner in Oct 2015. And in May, 2015, Kadaik's sone asked for a job on the campaign")
@@ -9101,7 +12786,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-10-28T17:30:17+04:00", "He knows. He just got handed a note.")
   strzok_to_page(child_file, "2016-10-28T17:33:54+04:00", "Ha. He asking about it now?")
-  m = strzok_to_page(child_file, "2016-10-30T13:50:53+04:00", "This is all Matt\n\n Justice officials warned FBI that Comey\u2019s decision to update Congress was not consistent with department policy - The Washington Post\nhttps://www.washingtonpost.com/world/national-security/justice-officials-warned-fbi-that-comeys-decision-to-update-congress-was-not-consistent-with-department-policy/2016/10/29/cb179254-9de7-11e6-b3c9-f662adaa0048_story.html?hpid=hp_hp-top-table-main_campaignprint-810pm%3Ahomepage%2Fstory")
+  m = strzok_to_page(child_file, "2016-10-30T13:50:53+04:00", "This is all Matt\n\nJustice officials warned FBI that Comey\u2019s decision to update Congress was not consistent with department policy - The Washington Post\nhttps://www.washingtonpost.com/world/national-security/justice-officials-warned-fbi-that-comeys-decision-to-update-congress-was-not-consistent-with-department-policy/2016/10/29/cb179254-9de7-11e6-b3c9-f662adaa0048_story.html?hpid=hp_hp-top-table-main_campaignprint-810pm%3Ahomepage%2Fstory")
   m.addnote("Matt - probably Matt Apuzzo, national security reporter a the Washington Post")
   m = page_to_strzok(child_file, "2016-10-30T13:56:06+04:00", "Yeah, I saw it. Makes me feel WAY less bad about throwing him under the bus in the forthcoming CF article.")
   m.addnote("CF - Possibly Crossfire Fury - Paul Manafort")
@@ -9131,7 +12816,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-03T00:57:54+04:00", "Yes")
   page_to_strzok(child_file, "2016-11-03T11:29:46+04:00", "The nyt probability numbers are dropping every day. I'm scared for our organization.")
 
-  # Page 108
+  # Page 108 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-11-04T03:19:04+04:00", "Dude. On Inauguration Day, in addition to our kegger we should also have a screening of the Weiner documentary! \U0001f60a")
@@ -9140,7 +12825,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-06T20:52:54+05:00", "I'm on fox. Trump is talking about her.")
   #page_to_strzok(child_file, "2016-11-06T20:53:42+05:00", "He's talking about cartwright and Petraeus and how they're not protected. She's protected by a rigged system.")
 
-  # Page 109
+  # Page 109 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-11-07T01:43:03+05:00", "Good lord...\n\nInside Donald Trump\u2019s Last Stand: An Anxious Nominee Seeks Assurance http://nyti.ms/2esuTs3")
@@ -9150,16 +12835,16 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("Possibly 'babe' because Strzok has called Page that before")
   
 
-  # Page 110
+  # Page 110 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-11-08T02:42:40+05:00", "What is she saying?")
   page_to_strzok(child_file, "2016-11-08T02:43:40+05:00", "She does realize you've been in EVERY conversation that has been had about this case, right?")
   m = strzok_to_page(child_file, "2016-11-08T02:44:54+05:00", "That we should have gone on the record saying Kallstrom and others are not credible (which may be valid), but then saying we could pull his tolls if we wanted to. Because she knows all about our policy regarding investigations of members of the media. \U0001f621")
   m.addnote("Kallstrom - Possibly Former FBI Assistant Director James Kallstrom ")
-  strzok_to_page(child_file, "2016-11-08T02:45:31+05:00", "Yes. But she's an expert who knows everything. \n\nI'm telling you, it's wildly infuriating. She has good points buy then assumes wildly impossible understanding of things to make groundless assertions.")
+  strzok_to_page(child_file, "2016-11-08T02:45:31+05:00", "Yes. But she's an expert who knows everything.\n\nI'm telling you, it's wildly infuriating. She has good points but then assumes wildly impossible understanding of things to make groundless assertions.")
   
-  # Page 111
+  # Page 111 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-11-08T02:45:59+05:00", "Told her twice she was either calling me stupid or a liar. \U0001f621\U0001f621\U0001f621\U0001f621")
@@ -9167,7 +12852,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-08T02:47:14+05:00", "Jesus, --Redacted--. I'm sorry. That would make me blind with rage.")
   #strzok_to_page(child_file, "2016-11-08T02:47:53+05:00", "Leaking information about ongoing investigations. Which is incorrect information. By agents who don't know about things talking to him. \n\nSee? That's the thing. Her initial point, that we should have gone after the agents talking harder and sooner, is not unreasonable. But the subsequent discussion falls into uninformed assertions.")
 
-  # Page 112
+  # Page 112 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   strzok_to_page(child_file, "2016-11-09T01:06:45+05:00", "\U0001f60a\n\nHsppy Election geekdom here.")
@@ -9175,7 +12860,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-09T04:20:14+05:00", "PBS is projecting Florida as well.")
   page_to_strzok(child_file, "2016-11-09T09:34:14+05:00", "And there it is.")
 
-  # Page 113
+  # Page 113 Appendix C - Documents.pdf
   # OUTBOX == Page to Strzok
   # INBOX == Strzok to Page
   page_to_strzok(child_file, "2016-11-09T09:58:18+05:00", "Analogous to the public editor article Bill handed out.\n\nNews Media Yet Again Misreads America\u2019s Complex Pulse http://2eCqXVM")
@@ -10847,7 +14532,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-07-18T21:06:02+04:00", "--Redacted--")
   strzok_to_page(child_file, "2016-07-18T21:09:20+04:00", "--Redacted--")
   strzok_to_page(child_file, "2016-07-18T21:47:48+04:00", "--Redacted--\n\nDon't want to to miss Melania's big speech...")
-  strzok_to_page(child_file, "2016-07-18T21:47:48+04:00", "And f*ck the cheating motherf*cking Russians. Bastards. I hate them")
+  #strzok_to_page(child_file, "2016-07-18T21:47:48+04:00", "And f*ck the cheating motherf*cking Russians. Bastards. I hate them")
   page_to_strzok(child_file, "2016-07-18T23:00:56+04:00", "I'm sorry, me too.")
   
   # Page 303
@@ -11430,7 +15115,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-08-03T01:17:00+04:00", "So looking at this form, I think we need to consider the lines of what we disclose to Doj. For example, the last stipulation notes we will not disclose the identities outside the FBI. I think we and they could live with that.\n\nAnd frankly, I think you might argue the unauthorized disclosure might reasonably be expected to cause exceptionally grave damage to US national security...")
   strzok_to_page(child_file, "2016-08-03T01:40:24+04:00", "--Redacted-- talked about the Embassy. It's the longest continuously staffed establishment in London (he noted the Audtrian was the oldest but they were thrown out during the War (s))")
   # 415514300-Strzok-Page-text-messages.pdf has hand written unredactions, page 4
-  page_to_strzok(child_file, "2016-08-03T01:43:20+04:00", "Just you two? Was DCM present for the interview?")
+  #page_to_strzok(child_file, "2016-08-03T01:43:20+04:00", "Just you two? Was DCM present for the interview?")
   # 415514300-Strzok-Page-text-messages.pdf has hand written unredactions, page 4
   strzok_to_page(child_file, "2016-08-03T01:43:42+04:00", "No, two of them, two of us")
   strzok_to_page(child_file, "2016-08-03T01:47:56+04:00", "--Redacted--")
@@ -11445,7 +15130,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   ie.when = truxton.parsetime("2016-08-03T02:14:50+04:00")
   ie.save() 
 
-  page_to_strzok(child_file, "2016-08-03T07:33:34+04:00", "New case. Information flow. Control.")
+  #page_to_strzok(child_file, "2016-08-03T07:33:34+04:00", "New case. Information flow. Control.")
   page_to_strzok(child_file, "2016-08-03T07:34:14+04:00", "Andy. The dynamic.\n\nAnd yeah, but it's not mine to worry about.")
   # This URL contains hand written unredactions
   # https://www.scribd.com/document/415514300/Strzok-Page-text-messages
@@ -11974,7 +15659,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-08-29T11:23:18+04:00", "\u263a good. I like her, I think. Is she still officially Steinbach's staff, or ONP, or DO generally?")
   page_to_strzok(child_file, "2016-08-29T11:24:00+04:00", "Steinbach's staff. And yes, she's excellent.")
 
-  # Page 348
+  # Page 348 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-08-29T11:27:02+04:00", "Entering turnstiles now. Your office?")
@@ -11993,7 +15678,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-08-30T09:03:39+04:00", "--Redacted-- and then on Friday.")
   page_to_strzok(child_file, "2016-08-30T09:04:18+04:00", "--Redacted--")
 
-  # Page 349
+  # Page 349 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-08-30T09:05:07+04:00", "No, you heard the prebrief for --Redacted-- to Andy, then the one to the D. Then you heard the prebrief on Fri to Andy, then this one. You've heard it at least FOUR times.")
@@ -12004,13 +15689,13 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-08-30T09:20:30+04:00", "--Redacted--")
   strzok_to_page(child_file, "2016-08-30T09:44:50+04:00", "Here we go:\nHarry Reid Cites Evidence of Russian Tampering in U.S. Vote, and Seeks F.B.I. Inquiry\n\nhttp://mobile.nytimes.com/2016/08/30/us/politics/harry-reid-russia-tampering-election-fbi.html")
   strzok_to_page(child_file, "2016-08-30T09:45:20+04:00", "But Mr. Reid argued that the connections between some of Donald J. Trump\u2019s former and current advisers and the Russian leadership should, by itself, prompt an investigation. He referred indirectly in his letter to a speech given in Russia by one Trump adviser, Carter Page, a consultant and investor in the energy giant Gazprom, who criticized American sanctions policy toward Russia.\n\n\u201cTrump and his people keep saying the election is rigged,\u201d Mr. Reid said.\u201cWhy is he saying that? Because people are telling him the election can be messed with.\u201d Mr. Trump\u2019s advisers say they are concerned that unnamed elites could rig the election for his opponent, Hillary Clinton.")
-  page_to_strzok(child_file, "2016-08-30T09:45:44+04:00", "D said at am brief thst Reid called him and told him he would be sending a le t ter.")
+  #page_to_strzok(child_file, "2016-08-30T09:45:44+04:00", "D said at am brief thst Reid called him and told him he would be sending a le t ter.")
   #strzok_to_page(child_file, "2016-08-30T09:46:29+04:00", "Bill didn't mention it\U0001f612")
   #strzok_to_page(child_file, "2016-08-30T09:51:55+04:00", "And holy cow, let me send you the Reid letter!")
   page_to_strzok(child_file, "2016-08-30T11:10:10+04:00", "Have a meeting with turgal about getting iPhone in a day or so")
   strzok_to_page(child_file, "2016-08-30T11:13:56+04:00", "Oh hot damn. I'm happy to pilot that. ...\n\nWe get around our security / monitoring issues?")
 
-  # Page 350
+  # Page 350 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   page_to_strzok(child_file, "2016-08-30T11:28:50+04:00", "No, he's proposing that we just stop following them. Apparently the requirement to capture texts came from omb, but we're the only org (I'm told) who is following that rule. His point is, if no one else is doing it why should we.")
@@ -12028,14 +15713,14 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-08-30T16:29:43+04:00", "You got the --Redacted-- card?")
   page_to_strzok(child_file, "2016-08-30T16:30:03+04:00", "Yes. In the binder already.")
   strzok_to_page(child_file, "2016-08-30T16:30:53+04:00", "Wow. You're good. :)")
-  page_to_strzok(child_file, "2016-08-31T00:33:49+04:00", "VOM-IT. VOMIT. Vomit vomit vomit.\n\nEdward Snowden\u2019sLong, Strange Journey to Hollywood http://nyti.ms2c4Kz50")
+  page_to_strzok(child_file, "2016-08-31T00:33:49+04:00", "VOM-IT. VOMIT. Vomit vomit vomit.\n\nEdward Snowden\u2019s Long, Strange Journey to Hollywood http://nyti.ms2c4Kz50")
   strzok_to_page(child_file, "2016-08-31T00:34:55+04:00", "I told him I thought it might be harder for me than for him, but that that was ok.\U0001f636\n\nI will not read about Snowden tonight.")
   page_to_strzok(child_file, "2016-08-31T01:03:16+04:00", "And seriously, don't read the article, but jesus, V-O-M-I-T.")
   m = strzok_to_page(child_file, "2016-08-31T01:06:15+04:00", "Believe me, I'm not touching that article. Maybe CYD can take that case, too...")
   m.addnote("CYD - FBI Cyber Division")
   page_to_strzok(child_file, "2016-08-31T02:37:11+04:00", "Did you ever look at this? It's incredibly powerful. And really, really depressing.\n\nAt least 110 Republican Leaders Won\u2019t Vote for Donald Trump. Here\u2019s When They Reached Their Breaking Point. http://nyti.ms/2bTNAbb")
 
-  # Page 351
+  # Page 351 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok  
   page_to_strzok(child_file, "2016-08-31T11:37:05+04:00", "Re the case, Jim Baker honks you should have it. But I'm sure andy would defer to bill. I won't mention.")
@@ -12058,7 +15743,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-09-01T11:42:11+04:00", "I sent an email to he and Randy asking to talk after morning meeting. No answer, but presumably will see them in a couple.")
   strzok_to_page(child_file, "2016-09-01T12:02:45+04:00", "Good luck. Id just tell them what you told me. You're doing a good job, Lisa.\n\nI had more to say about what I think drives the perception. Mainly people want to identify eternal causes of problems rather than face that it might be them.")
   
-  # Page 352
+  # Page 352 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok  
   strzok_to_page(child_file, "2016-09-01T12:07:39+04:00", "That means a lot of times it isn't YOU, it's the position. I heard grumbling about such things as soon as i was in a professional position to hear it, about --Redacted-- and --Redacted-- and --Redacted-- and everyone in between.\n\nThis is no doubt a sh*tty drawback of your job.")
@@ -12082,7 +15767,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-01T16:37:31+04:00", "I can call later, too")
   page_to_strzok(child_file, "2016-09-01T16:38:12+04:00", "Let's just talk later. It's not clear what he said, just some things that Eric implied.")
 
-  # Page 353
+  # Page 353 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok  
   strzok_to_page(child_file, "2016-09-01T16:53:36+04:00", "Talk now?")
@@ -12119,7 +15804,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-01T19:26:41+04:00", "Obviously if Andy is good with the statement, I'm not adding \"me too\"!")
   page_to_strzok(child_file, "2016-09-01T20:57:38+04:00", "Need to go to wrap. Because I'm so stupid and loyal I stayed here the same day so Andy doesn't miss anything.")
   #page_to_strzok(child_file, "2016-09-01T23:16:49+04:00", "I can't. Now the Midyear production has to happen tomorrow. And you and --Redacted-- and --Redacted-- are all out.")
-  strzok_to_page(child_file, "2016-09-01T13:22:58+04:00", "What is production at this point? Certainly, that you can't do from home?")
+  #strzok_to_page(child_file, "2016-09-01T13:22:58+04:00", "What is production at this point? Certainly, that you can't do from home?")
   #page_to_strzok(child_file, "2016-09-01T23:26:00+04:00", "Yeah, and get everyone the copies they need, and tell baker and doj an wait for all the hill notifications and tell the agency. I'm not giving State an advance warning. F them.")
   strzok_to_page(child_file, "2016-09-01T23:42:11+04:00", "Email. They all have secretaries who can print for them. Jason handles the hill. It will ALL work out without you there")
   #strzok_to_page(child_file, "2016-09-01T23:51:41+04:00", "And yes, totally. F State. No heads up")
@@ -12309,7 +15994,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-09-07T00:09:17+04:00", "I don't know. I think I was feeling momentarily resentful at you worry. Yours is speculative and distant, mine is front and center and the in fact named problem.")
   page_to_strzok(child_file, "2016-09-07T00:09:30+04:00", "Probably not bring fair to you, I realize.")
 
-  # Page 362
+  # Page 362 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-09-07T00:13:21+04:00", "Lisa, It's not. I was feeling the same resentment. My boss told me specifically I was mentioned, including in the context of Pete going around the chain of command to get Lisa to feed something to Andy. I did not make that up. I am not exaggerating that. Thus isn't ALL you, nor is it a zero sum game, not is it a comparison or competition. But simply waving my concerns aside, saying \"it's all me.\" isn't accurate.")
@@ -12334,7 +16019,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-07T15:21:42+04:00", "Finishing SC mtg, 5 min")
   strzok_to_page(child_file, "2016-09-07T19:49:00+04:00", "Just got done with Castor.")
 
-  # Page 363
+  # Page 363 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   page_to_strzok(child_file, "2016-09-07T22:15:34+04:00", "Andy not going to reply all. I am furious. Don't call back.")
@@ -12506,9 +16191,9 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-09-10T12:44:22+04:00", "I know the material. The --Redacted-- stuff, right? I know it.")
   page_to_strzok(child_file, "2016-09-10T12:45:16+04:00", "And the state shenanigans stuff. Anything else?")
   strzok_to_page(child_file, "2016-09-10T12:48:26+04:00", "Certainly those. Probably others. All the laptops and media voluntarily turned over to us by the attorneys (\"why didnt you ever serach this\"? \"Why isnt this relevant to our oversight responsibilities\"?) I want to go read through the ones we didn't produce. The point is Reps will try and spin and attack whatever is in the ones not initially turned over to them.")
-  strzok_to_page(child_file, "2016-09-10T12:53:04+04:00", "Re 302s, didn't search the laptops given to us voluntarily by various attorneys.")
-  page_to_strzok(child_file, "2016-09-10T12:53:49+04:00", "Why not? Decision that it was unlikely to contain info relevant to our case in like of time constraints?")
-  strzok_to_page(child_file, "2016-09-10T12:55:59+04:00", "They would not consent and we did not have probable cause to get on them.")
+  #strzok_to_page(child_file, "2016-09-10T12:53:04+04:00", "Re 302s, didn't search the laptops given to us voluntarily by various attorneys.")
+  #page_to_strzok(child_file, "2016-09-10T12:53:49+04:00", "Why not? Decision that it was unlikely to contain info relevant to our case in like of time constraints?")
+  #strzok_to_page(child_file, "2016-09-10T12:55:59+04:00", "They would not consent and we did not have probable cause to get on them.")
   # strzok_to_page(child_file, "2016-09-10T12:56:47+04:00", "I will go review the 302s we didn't turn over and send thoughts to everyone except the 0 corridor recipients. You or Trisha or Jason can mention to them.")
   # page_to_strzok(child_file, "2016-09-10T12:57:00+04:00", "Oh well that's totally defendable. Why did they give them to us?\n\nYeah, but I think that was the context in which it was meant. I.e., like who sucks more, me or her?")
   page_to_strzok(child_file, "2016-09-10T12:57:21+04:00", "--Redacted-- it's not worth your time. I've got it. Truly.")
@@ -12580,14 +16265,14 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-09-12T18:08:56+04:00", "JM is going to meet with him now I think, I'd walk down to him.")
   strzok_to_page(child_file, "2016-09-12T18:15:09+04:00", "Good idea. Will try and drop in. In which case I'll be free at 4/4:30 \U0001f60a")
   strzok_to_page(child_file, "2016-09-12T18:22:37+04:00", "Carl isn't there :(\n\nMtg upstairs till 3...")
-  strzok_to_page(child_file, "2016-09-12T21:09:53+04:00", "Chaffetz is horrible....")
-  strzok_to_page(child_file, "2016-09-12T21:13:37+04:00", "Expected blustering. ...")
+  #strzok_to_page(child_file, "2016-09-12T21:09:53+04:00", "Chaffetz is horrible....")
+  #strzok_to_page(child_file, "2016-09-12T21:13:37+04:00", "Expected blustering. ...")
   page_to_strzok(child_file, "2016-09-12T21:13:53+04:00", "God, glad I'm not watching...")
-  strzok_to_page(child_file, "2016-09-12T21:47:49+04:00", "Omg Gowdy is being a total dick. All investigative questions. And Jason isn't always sticking to the script on \"I'm not answering that.\"")
-  strzok_to_page(child_file, "2016-09-12T21:47:53+04:00", "Horrible")
-  strzok_to_page(child_file, "2016-09-12T21:54:47+04:00", "This was a mistake")
-  # page_to_strzok(child_file, "2016-09-12T21:59:48+04:00", "Oh no")
-  strzok_to_page(child_file, "2016-09-12T22:00:28+04:00", "Lis, it's bad.")
+  #strzok_to_page(child_file, "2016-09-12T21:47:49+04:00", "Omg Gowdy is being a total dick. All investigative questions. And Jason isn't always sticking to the script on \"I'm not answering that.\"")
+  #strzok_to_page(child_file, "2016-09-12T21:47:53+04:00", "Horrible")
+  #strzok_to_page(child_file, "2016-09-12T21:54:47+04:00", "This was a mistake")
+  #page_to_strzok(child_file, "2016-09-12T21:59:48+04:00", "Oh no")
+  #strzok_to_page(child_file, "2016-09-12T22:00:28+04:00", "Lis, it's bad.")
 
   # Page 373
   # OUTBOX == Page
@@ -12936,7 +16621,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("CYD - FBI Cyber Division")
   strzok_to_page(child_file, "2016-09-26T23:44:26+04:00", "Just rode the elevator down with Andy, had a nice convo. He went thru some of the stuff you shared earlier. \U0001f60a")
   page_to_strzok(child_file, "2016-09-26T23:46:24+04:00", "Work stuff?")
-  page_to_strzok(child_file, "2016-09-27T00:33:25+04:00", "Did you read this? It's scathing. And I'm scared.\n\nWhy Donald Trump Should Not Be President http://nyti.ms/2dbQPuR")
+  #page_to_strzok(child_file, "2016-09-27T00:33:25+04:00", "Did you read this? It's scathing. And I'm scared.\n\nWhy Donald Trump Should Not Be President http://nyti.ms/2dbQPuR")
   page_to_strzok(child_file, "2016-09-27T00:40:43+04:00", "Man, I should have started drinking earlier. I'm genuinely stressed about the debate.")
   page_to_strzok(child_file, "2016-09-27T01:06:47+04:00", "Oh god, she's already boring.")
   strzok_to_page(child_file, "2016-09-27T01:08:20+04:00", "I know. 100% produced. And I REALLY don't think she's that bad. She just can't escape the formula....")
@@ -12951,7 +16636,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-09-27T01:12:40+04:00", "--Redacted-- B) masters degree. He told me after some briefing where D and Jon made of their Gtwn - William and Mary riffs....")
   page_to_strzok(child_file, "2016-09-27T01:13:49+04:00", "Wow, really? Masters in what?")
   strzok_to_page(child_file, "2016-09-27T09:50:46+04:00", "Hi. I don't know. --Redacted--")
-  strzok_to_page(child_file, "2016-09-27T10:37:52+04:00", "Can I ask you a question about yesterday's discussion? Why rule out a job ad Doj. Not NSD or ODAG?")
+  m = strzok_to_page(child_file, "2016-09-27T10:37:52+04:00", "Can I ask you a question about yesterday's discussion? Why rule out a job ad Doj. Not NSD or ODAG?")
+  m.addnote("ODAG - Office of Deputy Attorney General")
   strzok_to_page(child_file, "2016-09-27T10:38:13+04:00", "Too political?")
   page_to_strzok(child_file, "2016-09-27T10:39:43+04:00", "No way. I don't see what I get out of that, and I'd have to deal with all the political BS.")
   strzok_to_page(child_file, "2016-09-27T10:40:32+04:00", "Political connections. Better entree into other jobs? Maybe not the latter.")
@@ -13032,7 +16718,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # INBOX == Strzok
   m = strzok_to_page(child_file, "2016-09-28T16:17:54+04:00", "Your sacs badge is in here..")
   m.addnote("SAC - Special Agent in Charge")
-  strzok_to_page(child_file, "2016-09-28T19:07:56+04:00", "Cyber fucked everything up wiht Iris and --Redacted-- I have calls in to both")
+  strzok_to_page(child_file, "2016-09-28T19:07:56+04:00", "Cyber fucked everything up with Iris and --Redacted-- I have calls in to both")
   page_to_strzok(child_file, "2016-09-28T19:10:07+04:00", "You are kidding me. \U0001f621 How so?")
   page_to_strzok(child_file, "2016-09-28T19:28:47+04:00", "Hey, just called you back.")
   strzok_to_page(child_file, "2016-09-28T19:31:36+04:00", "Sorry talking to Iris, --Redacted-- calling 3:30. Which I guess was 2 minutes ago.")
@@ -13274,8 +16960,8 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-10T00:46:09+04:00", "Decide if you're watching the debate?")
   page_to_strzok(child_file, "2016-10-10T00:47:49+04:00", "I think no. --Redacted-- will let you know")
   strzok_to_page(child_file, "2016-10-10T01:22:32+04:00", "--Redacted-- Debate is nasty....\n\nAlso, heard from --Redacted-- he's already at airport. He's willing to make a second trip but I'm not sure if it's worth if right now, especially if Bill got gist to Mike.")
-  m = strzok_to_page(child_file, "2016-10-10T01:23:55+04:00", "Trump saying agents at FBI are furious at the MYE outcome and he's getting a special prosecutor.")
-  m.addnote("MYE - Midyear Exam (Hillary Clinton)")
+  #m = strzok_to_page(child_file, "2016-10-10T01:23:55+04:00", "Trump saying agents at FBI are furious at the MYE outcome and he's getting a special prosecutor.")
+  #m.addnote("MYE - Midyear Exam (Hillary Clinton)")
   page_to_strzok(child_file, "2016-10-10T01:24:06+04:00", "I'm not watching.")
   strzok_to_page(child_file, "2016-10-10T01:27:32+04:00", "I am. Just getting aggravated. --Redacted--")
   strzok_to_page(child_file, "2016-10-11T02:01:21+04:00", "--Redacted--")
@@ -13727,7 +17413,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m = page_to_strzok(child_file, "2016-10-25T01:15:30+04:00", "Hey George T called me tonight about the mye letter they are getting ready to send out. Remind me I need to ask you something. Tomorrow is fine.")
   m.addnote("mye - Midyear Exam (Hillary Clinton)")
   
-  # Page 418
+  # Page 418 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-10-25T01:15:49+04:00", "Np. Just cranky at them for bad choices about --Redacted--")
@@ -13742,6 +17428,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-25T01:22:27+04:00", "And not critical. Just something to distract.")
   page_to_strzok(child_file, "2016-10-25T01:47:05+04:00", "Thanks for the note to Andy. \U00002764")
   strzok_to_page(child_file, "2016-10-25T01:56:23+04:00", "Ok, no?")
+  # The following is a duplicate message (Page 100) but with a different time stamp
   page_to_strzok(child_file, "2016-10-25T08:32:12+04:00", "Christ. Make sure you scroll down and read that guy's comment about the polls.\n\nDonald Trump Dismisses Latest Accuser: \u2018Oh, I\u2019m Sure She\u2019s Never Been Grabbed Before\u2019 http://nyti.ms/2eyZhVL")
   strzok_to_page(child_file, "2016-10-25T11:34:46+04:00", "Oh, I'm calling High Confidence.\n\nI am soooo late. Just sent Bob en email that I'd be late. \U0001f612")
   page_to_strzok(child_file, "2016-10-25T11:36:12+04:00", "Why so late?")
@@ -13755,7 +17442,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-25T21:55:53+04:00", "I'm with andy and kortan.")
   strzok_to_page(child_file, "2016-10-25T23:29:33+04:00", "Was talking to Bill, rehashed rehashed the the whole cyber ddpi talk. Looked at their (horrible ) slides")
 
-  # Page 419
+  # Page 419 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-10-25T23:29:51+04:00", "\U0001f636 well, yay!")
@@ -13839,7 +17526,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   m.addnote("Toscas - Deputy assistant attorney general at DOJ National Security Division George Toscas")
   page_to_strzok(child_file, "2016-10-27T16:21:41+04:00", "In with Kortan now.")
 
-  # Page 422
+  # Page 422 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-10-27T16:25:15+04:00", "Just spoke with JB...he relayed your convo...")
@@ -13857,7 +17544,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-27T21:09:48+04:00", "Hope it's going well...")
   page_to_strzok(child_file, "2016-10-27T21:21:08+04:00", "I'm done.")
   strzok_to_page(child_file, "2016-10-27T21:30:44+04:00", "I'm 20 feet from you and this feels unnatural. ....")
-  page_to_strzok(child_file, "2016-10-27T21:31:09+04:00", "I just walked in on Jim to force the issue. Me> \"I'm not recused, but I'm not sitting in on this meeting.\"")
+  page_to_strzok(child_file, "2016-10-27T21:31:09+04:00", "I just walked in on Jim to force the issue. Me: \"I'm not recused, but I'm not sitting in on this meeting.\"")
   page_to_strzok(child_file, "2016-10-27T21:31:19+04:00", "He told me to just go chill out for a while, so that's what I'm doing.")
   strzok_to_page(child_file, "2016-10-27T21:33:01+04:00", "That's good advice. --Redacted--")
   page_to_strzok(child_file, "2016-10-27T22:33:39+04:00", "You should not come by. We should talk by phone.")
@@ -13893,7 +17580,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-10-29T02:05:35-00:40", "Talking to --Redacted--")
   strzok_to_page(child_file, "2016-10-29T02:06:47-00:40", "Can talk if you want. Not that that would make any sense.")
 
-  # Page 424
+  # Page 424 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-10-29T12:31:53+04:00", "About to hop on phone with --Redacted-- and Jon")
@@ -13917,7 +17604,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-10-30T04:14:25+04:00", "And god, poor --Redacted-- Seems like she's been working the entire day.")
   # strzok_to_page(child_file, "2016-10-30T13:50:53+04:00", "This is all Matt\n\nJustice officials warned FBI that Comey\u2019s decision to update Congress was not consistent with department policy - The Washington Post\nhttps://www.washingtonpost.com/world/national-security/justice-officials-warned-fbi-that-comeys-decision-to-update-congress-was-not-consistent-with-department-policy/2016/10/29/cb179254-9de7-11e6-b3c9-f662adaa0048_story.html?hpid=hp_hp-top-table-main_campaignprint-810nm%3AAhomepage%2Estory")
 
-  # Page 425
+  # Page 425 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   # page_to_strzok(child_file, "2016-10-30T13:56:06+04:00", "Yeah, I saw it. Makes me feel WAY less bad about throwing him under the bus in the forthcoming --Redacted-- article.")
@@ -14225,7 +17912,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-07T23:09:44+05:00", "No I really can't.")
   strzok_to_page(child_file, "2016-11-07T23:12:20+05:00", "Np. Just JB frustration. It can wait. --Redacted--")
 
-  # Page 437
+  # Page 437 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   #page_to_strzok(child_file, "2016-11-08T01:32:02+05:00", "Impressive in its accuracy. \U0001f612\n\nHow the F.B.I. Reviewed Thousands of Emails in One Week http://nyti.ns/2egA2sg")
@@ -14235,15 +17922,15 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-11-08T02:42:03+05:00", "I'm sorry. Managed to get into a huge fight here about the Bu and Clinton. Because --Redacted-- just can't stop at fair observations. She has to assert mastery of things about which she has NO knowledge.")
   page_to_strzok(child_file, "2016-11-08T02:43:40+05:00", "She does realize you've been in EVERY conversation that has been had about this case, right?")
   strzok_to_page(child_file, "2016-11-08T02:44:54+05:00", "That we should have gone on the record saying Kallstrom and others are not credible (which may be valid), but then saying we could pull his tolls if we wanted to. Because she knows all about our policy regarding investigations of members of the media. \U0001f621")
-  strzok_to_page(child_file, "2016-11-08T02:45:31+05:00", "Yes. But she's an expert who knows everything.\n\nI'm telling you, it's wildly infuriating. She has good points but then assumes wildly impossible understanding of things to make groundless assertions.")
-  page_to_strzok(child_file, "2016-11-08T02:46:06+05:00", "Uh, what crime are we investigating?\n\nAnd I'm sorry, that's a terrible idea. Go to war with the formers?")
+  #strzok_to_page(child_file, "2016-11-08T02:45:31+05:00", "Yes. But she's an expert who knows everything.\n\nI'm telling you, it's wildly infuriating. She has good points but then assumes wildly impossible understanding of things to make groundless assertions.")
+  #page_to_strzok(child_file, "2016-11-08T02:46:06+05:00", "Uh, what crime are we investigating?\n\nAnd I'm sorry, that's a terrible idea. Go to war with the formers?")
   strzok_to_page(child_file, "2016-11-08T02:47:53+05:00", "Leaking information about ongoing investigations. Which is incorrect information. By agents who don't know about things talking to him.\n\nSee? That's the thing. Her initial point, that we should have gone after the agents talking harder and sooner, is not unreasonable. But the subsequent discussion falls into uninformed assertions.")
   page_to_strzok(child_file, "2016-11-08T02:49:08+05:00", "If it's not classified, what's the crime though?")
   strzok_to_page(child_file, "2016-11-08T02:49:26+05:00", "Maybe we should go to war with them, if they're spouting bile like Kallstrom. He's really out of bounds. THat is a valid debate. Talking - telling - me how we should have done it is what's infuriating.")
   strzok_to_page(child_file, "2016-11-08T02:50:35+05:00", "There's not a crime. So you publicly shame or disavow him. And you find out who's talking to him and go after them with opr. It's a legitimate criticism that we might have looked sooner at all these people running their mouths to the press.")
   page_to_strzok(child_file, "2016-11-08T02:50:52+05:00", "I get it. I'm not trying to fight with you too. I'm sorry.")
 
-  # Page 438
+  # Page 438 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-11-08T02:53:39+05:00", "I mean how in the HELL do you assume you know something outside of your field? How can you not, as an accomplished lawyer, understand how far and wide the field of law is? You or --Redacted-- or whoever would ever assume knowledge of things outside of criminal law. It boggles my mind.")
@@ -14263,7 +17950,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   page_to_strzok(child_file, "2016-11-09T09:34:14+05:00", "And there it is.")
   #page_to_strzok(child_file, "2016-11-09T09:58:18+05:00", "Analogous to the public editor article Bill handed out.\n\nNews Media Yet Again Misreads America\u2019s Complex Pulse http://nyti.ms/2eCqXVM")
   strzok_to_page(child_file, "2016-11-09T12:13:37+05:00", "Too hard to explain here. Election related. Which is godawful bad.\n\nSure")
-  page_to_strzok(child_file, "2016-11-09T09:58:18+05:00", "Are you even going to give out your calendars? Seems kind of depressing. Maybe it should just be the first meeting of the secret society.")
+  #page_to_strzok(child_file, "2016-11-09T09:58:18+05:00", "Are you even going to give out your calendars? Seems kind of depressing. Maybe it should just be the first meeting of the secret society.")
   page_to_strzok(child_file, "2016-11-09T12:44:06+05:00", "And Christ, we should just hit those thumb drives now. Their opinion is totally irrelevant.")
   strzok_to_page(child_file, "2016-11-09T12:50:49+05:00", "No. And yes")
   page_to_strzok(child_file, "2016-11-09T12:51:16+05:00", "I'll mention to Andy.")
@@ -14348,7 +18035,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-11-15T01:56:53+05:00", "Ha. States going to EXPLODE")
   strzok_to_page(child_file, "2016-11-15T02:05:06+05:00", "What page you on?")
   page_to_strzok(child_file, "2016-11-15T02:06:37+05:00", "15. You distracted me with the news.")
-  page_to_strzok(child_file, "2016-11-15T11:56:44+05:00", "Yeah, and then the Deputy Director told you to go to London on 24 hours notice.")
+  #page_to_strzok(child_file, "2016-11-15T11:56:44+05:00", "Yeah, and then the Deputy Director told you to go to London on 24 hours notice.")
   page_to_strzok(child_file, "2016-11-16T08:25:18+05:00", "An article to share: How Bannon flattered and coaxed Trump on policies key to the alt-right\nHow Bannon flattered and coaxed Trump on policies key to the alt-right\nhttp://wapo.st/2fDJCSV")
   page_to_strzok(child_file, "2016-11-16T19:29:36+05:00", "--Redacted--")
   strzok_to_page(child_file, "2016-11-16T19:34:08+05:00", "--Redacted--")
@@ -14444,7 +18131,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-11-23T16:59:08+05:00", "No, he left him a message")
   strzok_to_page(child_file, "2016-11-23T17:01:55+05:00", "Tell you what, this is going to be an interesting meeting with them in a couple of weeks")
 
-  # Page 446
+  # Page 446 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   page_to_strzok(child_file, "2016-11-23T22:09:17+05:00", "--Redacted--")
@@ -14459,7 +18146,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-11-27T19:57:57+05:00", "Yep. Meeting with Jon and --Redacted-- and --Redacted-- tomorrow to decide what to talk about, get all the paperwork going.")
   strzok_to_page(child_file, "2016-11-27T19:59:31+05:00", "At which point I'll direct everyone to take the Tuesday daytime flight :D")
   page_to_strzok(child_file, "2016-11-28T13:01:13+05:00", "--Redacted-- asked me about flight info etc., so at a minimum I expect she'll be flying with us.")
-  strzok_to_page(child_file, "2016-11-28T13:06:08+05:00", "And boo. That sucks. SHould I move my seat so she can grab the one next to yours?")
+  strzok_to_page(child_file, "2016-11-28T13:06:08+05:00", "And boo. That sucks. Should I move my seat so she can grab the one next to yours?")
   strzok_to_page(child_file, "2016-11-28T13:07:35+05:00", "And anticipate that means she will hang on Tues...all expected, I guess, was just hoping for different.\n\nJust got into work, have my standing 830")
   page_to_strzok(child_file, "2016-11-28T13:15:35+05:00", "Maybe re Tuesday. She might do touristy things though, since it's been two decades since she was there.")
   page_to_strzok(child_file, "2016-11-28T13:24:48+05:00", "--Redacted-- and jon and the rest of them should be encouraged to take another flight though.")
@@ -14469,7 +18156,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2016-11-29T01:50:24+05:00", "Ok, well, that's motivation. I'll help, obviously")
   strzok_to_page(child_file, "2016-11-29T02:34:43+05:00", "--Redacted--")
 
-  # Page 447
+  # Page 447 Appendix C - Documents.pdf
   # OUTBOX == Page
   # INBOX == Strzok
   strzok_to_page(child_file, "2016-11-29T02:37:26+05:00", "--Redacted--")
@@ -14873,7 +18560,7 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   strzok_to_page(child_file, "2017-05-23T21:25:44+04:00", "So this drives me nuts - just had the most collegial convo with Carl (since I left your office) weird")
   page_to_strzok(child_file, "2017-05-24T00:00:00+04:00", "--Redacted-- Yes, it's an honor to be asked, but so what. I don't want to live constantly straddling two worlds.")
   strzok_to_page(child_file, "2017-05-24T00:02:12+04:00", "That's a very valid concern. You truly will never get this time back, ever.\n\nAnd I have no way to predict what the schedule will look like. The only thing I can tell you is the best predictor is there past, and both Bob and Aaron are tremendous Workaholics. Both demanding.")
-  strzok_to_page(child_file, "2017-05-24T00:02:49+04:00", "Have you had a conversation wiht Aaron about what his hours have been like this past week? If he's working until 9 or 10, that says something. If they're all leaving at 6, that says another.")
+  strzok_to_page(child_file, "2017-05-24T00:02:49+04:00", "Have you had a conversation with Aaron about what his hours have been like this past week? If he's working until 9 or 10, that says something. If they're all leaving at 6, that says another.")
   strzok_to_page(child_file, "2017-05-24T00:03:51+04:00", "My worry is that all these attorneys that they're bringing from the private sector will be used to long hours, because they're used to law firm salaries. They won't mind missing the money, but will bring that same expection of long long hours.")
 
   # Page 464
@@ -15861,1133 +19548,6 @@ def add_strzok_page_messages_appendix_c(parent_file: truxton.TruxtonChildFileIO)
   # Completed
   return None
 
-def create_media(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
-
-  global Crossfire_Typhoon
-  global Crossfire_Razor
-  global Crossfire_Fury
-  global Crossfire_Dragon
-
-  Crossfire_Typhoon = create_typhoon(t)
-  Crossfire_Razor = create_razor(t)
-  Crossfire_Fury = create_fury(t)
-  Crossfire_Dragon = create_dragon(t)
-
-  media = t.newmedia()
-
-  media.name = "Public Documents"
-  media.description = "Everything released by the government, books, news organizations and blogs"
-  media.case = "DC-SNAFU-2016.2020"
-  media.evidencebag = "EV-0937459386623-a"
-  media.originator = "Jeffrey Jensen"
-  media.latitude = 38.897661
-  media.longitude = -77.036458
-  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
-
-  if not media.save():
-    print("Media not saved")
-  else:
-    print("Media created")
-
-  return media
-
-def create_typhoon(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
-  media = t.newmedia()
-
-  media.name = "Crossfire Typhoon"
-  media.description = "George Papadopoulos"
-  media.case = "97F-HQ-2067748"
-  media.evidencebag = "None"
-  media.originator = "Jeffrey Jensen"
-  media.latitude = 38.897661
-  media.longitude = -77.036458
-  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
-
-  if not media.save():
-    print("Crossfire Typhoon media not saved")
-  else:
-    print("Crossfire Typhoon (George Papadopoulos) media created")
-
-  return media
-
-def create_razor(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
-  media = t.newmedia()
-
-  media.name = "Crossfire Razor"
-  media.description = "Michael Flynn"
-  media.case = "97F-NY-2069860"
-  media.evidencebag = "None"
-  media.originator = "Jeffrey Jensen"
-  media.latitude = 38.897661
-  media.longitude = -77.036458
-  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
-
-  if not media.save():
-    print("Crossfire Razor media not saved")
-  else:
-    print("Crossfire Razor (Michael Flynn) media created")
-
-  return media
-
-def create_fury(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
-  media = t.newmedia()
-
-  media.name = "Crossfire Fury"
-  media.description = "Paul Manafort"
-  media.case = "97F-HQ-2067749"
-  media.evidencebag = "None"
-  media.originator = "Paul Manafort"
-  media.latitude = 38.897661
-  media.longitude = -77.036458
-  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
-
-  if not media.save():
-    print("Crossfire Fury media not saved")
-  else:
-    print("Crossfire Fury (Paul Manafort) media created")
-
-  return media
-
-def create_dragon(t: truxton.TruxtonObject) -> truxton.TruxtonMedia:
-  media = t.newmedia()
-
-  media.name = "Crossfire Dragon"
-  media.description = "Carter Page"
-  media.case = "97F-HQ-2067747"
-  media.evidencebag = "None"
-  media.originator = "Carter Page"
-  media.latitude = 38.897661
-  media.longitude = -77.036458
-  media.type = truxton.MEDIA_TYPE_LOGICAL_FILES
-
-  if not media.save():
-    print("Crossfire Dragon media not saved")
-  else:
-    print("Crossfire Dragon (Carter Page) media created")
-
-  return media
-
-# defined constants
-EVENT_TYPE_CAMPAIGN = 20000
-EVENT_TYPE_FBI = 20001
-EVENT_TYPE_CIA = 20002
-EVENT_TYPE_DNI = 20003
-EVENT_TYPE_WIKILEAKS = 20004
-EVENT_TYPE_MUELLER = 20005
-EVENT_TYPE_STRZOK_PAGE_MESSAGE = 20006
-EVENT_TYPE_MIFSUD = 20007
-EVENT_TYPE_STEELE = 20008
-EVENT_TYPE_FISA = 20009
-EVENT_TYPE_DOWNER = 20010
-EVENT_TYPE_RICE = 20011
-EVENT_TYPE_POWER = 20012
-EVENT_TYPE_GCHQ = 20013
-EVENT_TYPE_NSA = 20014
-EVENT_TYPE_OBAMA = 20015
-EVENT_TYPE_UNMASK = 20016
-EVENT_TYPE_DOJ = 20017
-EVENT_TYPE_FLYNN = 20018
-EVENT_TYPE_HILLARY = 20019
-EVENT_TYPE_DANCHENKO = 20020
-EVENT_TYPE_MCCABE_PAGE_MESSAGE = 20021
-EVENT_TYPE_FBI_ANALYST_MESSAGE = 20022
-EVENT_TYPE_LYNC_MESSAGE = 20023
-
-MCCABE_PHONE_NUMBER = "2025551111"
-STRZOK_PHONE_NUMBER = "2025552222"
-PAGE_PHONE_NUMBER   = "2025553333"
-UNKNOWN_FBI_ANALYST = "2025554444"
-FBI_ANALYST_CHAT    = "2025555555"
-
-# Create our artifact types
-def create_artifact_types(t: truxton.TruxtonObject) -> None:
-  create_artifact_type(t, 1101, "Leak", "A leak" )
-  return None
-
-# Create our types
-def create_event_types(t: truxton.TruxtonObject) -> None:
-  create_event_type(t, EVENT_TYPE_CAMPAIGN, "Trump Campaign" )
-  create_event_type(t, EVENT_TYPE_FBI, "FBI Actions" )
-  create_event_type(t, EVENT_TYPE_CIA, "CIA Actions" )
-  create_event_type(t, EVENT_TYPE_DNI, "DNI Actions" )
-  create_event_type(t, EVENT_TYPE_WIKILEAKS, "Wikileaks Actions" )
-  create_event_type(t, EVENT_TYPE_MUELLER, "Mueller Actions" )
-  create_event_type(t, EVENT_TYPE_STRZOK_PAGE_MESSAGE, "Strzok Page Message" )
-  create_event_type(t, EVENT_TYPE_MIFSUD, "Mifsud Actions" )
-  create_event_type(t, EVENT_TYPE_STEELE, "Steele Report" )
-  create_event_type(t, EVENT_TYPE_FISA, "FISA/FISC" )
-  create_event_type(t, EVENT_TYPE_DOWNER, "Alexander Downer Actions" )
-  create_event_type(t, EVENT_TYPE_RICE, "Susan Rice Actions" )
-  create_event_type(t, EVENT_TYPE_POWER, "Samantha Power Actions" )
-  create_event_type(t, EVENT_TYPE_GCHQ, "GCHQ Actions" )
-  create_event_type(t, EVENT_TYPE_NSA, "NSA Actions" )
-  create_event_type(t, EVENT_TYPE_OBAMA, "Obama Actions" )
-  create_event_type(t, EVENT_TYPE_UNMASK, "Flynn Unmasking" )
-  create_event_type(t, EVENT_TYPE_DOJ, "DOJ Actions" )
-  create_event_type(t, EVENT_TYPE_FLYNN, "Flynn Actions" )
-  create_event_type(t, EVENT_TYPE_HILLARY, "Hillary Clinton Campaign" )
-  create_event_type(t, EVENT_TYPE_DANCHENKO, "Danchenko" )
-  create_event_type(t, EVENT_TYPE_MCCABE_PAGE_MESSAGE, "McCabe Page Message" )
-  create_event_type(t, EVENT_TYPE_FBI_ANALYST_MESSAGE, "FBI Analysts Message" )
-  create_event_type(t, EVENT_TYPE_LYNC_MESSAGE, "FBI Lync Message" )
-
-  print("Custom event types created")
-  return None
-
-def set_primary_photo(parent_file: truxton.TruxtonChildFileIO, subject: truxton.TruxtonSubject, filename: str) -> None:
-  child_file = add_file(parent_file, filename)
-  relation = child_file.newrelation()
-  relation.a = child_file.id
-  relation.atype = truxton.OBJECT_TYPE_FILE
-  relation.b = subject.id
-  relation.btype = truxton.OBJECT_TYPE_SUSPECT
-  relation.relation = truxton.RELATION_PRIMARY_PHOTO
-  relation.save()
-  return None
-
-def create_subjects(t: truxton.TruxtonObject) -> None:
-  print("Creating Subjects")
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_DOWNER
-  s.name = "Alexander Downer"
-  s.description = "Australian High Commissioner to the United Kingdom. Heard Papadopoulos mention Clinton Emails and reported it."
-  s.birthday = datetime.fromisoformat("1951-09-09T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Alexander Downer.png")
-  s.save()
-  s.tag("AUS", "Australia is also known as the Friendly Foreign Government", truxton.TAG_ORIGIN_HUMAN)
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_MCCABE
-  s.name = "Andrew 'Andy' G. McCabe"
-  s.description = "Deputy Director (DD) FBI"
-  s.custom = "Wife Barbra Jill (McFarland) received $467,500 from June-Oct 2015 from Terry McAuliffe" 
-  s.birthday = datetime.fromisoformat("1968-03-18T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Andrew McCabe.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_PRIESTAP
-  s.name = "Edward William 'Bill' Priestap"
-  s.description = "Deputy Counterintelligence Division (DCD) FBI"
-  s.birthday = datetime.fromisoformat("1969-04-05T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Bill Priestap.png")
-  # Email account "ewpriestap" according to Page 86 of 460365255-Flynn-motion-to-dismiss.pdf
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_STEELE
-  s.name = "Christopher Steele"
-  # 456600733-FISA-footnotes.pdf, page 3 footnote 205
-  s.description = "Former MI-6, aka CROWN (FBI), FBI Confidential Human Source (CHS) paid $95,000"
-  s.birthday = datetime.fromisoformat("1964-06-24T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Christopher Steele.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_BOENTE
-  s.name = "Dana Boente"
-  s.description = "Acting Attorney General"
-  s.birthday = datetime.fromisoformat("1954-02-07T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Dana Boente.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_KRAMER
-  s.name = "David Kramer"
-  s.description = "Aide to Senator John McCain"
-  s.custom = "Went to London to receive dossier from Christopher Steele, leaked it to Buzzfeed"
-  s.birthday = datetime.fromisoformat("1964-12-01T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Kramer.png")
-  s.save()
-  s.tag("Leaker", "Leaked Steele Dossier to Buzzfeed", truxton.TAG_ORIGIN_HUMAN)
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_THOMPSON
-  s.name = "Erika Thompson"
-  s.description = "Assistant to High Commissioner Alexander Downer in London"
-  s.custom = "Her fiance, Christian Cantor (Israeli diplomat), knew Papadopoulos and suggested her boss, Alexander Downer, meet him"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Erika Thompson.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CANTOR
-  s.name = "Christian Cantor"
-  s.description = "Political Counselor at the Embassy of Israel in London"
-  s.custom = "His idea for Papadopoulos to meet Downer. His fiance, Erika Thompson worked for Australian High Commissioner Alexander Downer"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Christian Cantor.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_PAPADOPOULOS
-  s.name = "George Papadopoulos"
-  s.description = "Trump Campaign Aide, AKA Crossfire Typhoon"
-  s.birthday = datetime.fromisoformat("1987-08-19T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/George Papadopoulos.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_SIMPSON
-  s.name = "Glenn Simpson"
-  s.description = "Founder of Fusion GPS, Steele's boss"
-  s.birthday = datetime.fromisoformat("1964-01-01T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Glenn Simpson.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CAMP
-  s.name = "Jean Camp"
-  s.description = "Computer Security Researcher and Clinton supporter, told FBI about 2700 DNS name lookups from Alfa bank for FISA warrant"
-  s.custom = "Her DNS research is at http://www.ljean.com/NetworkData.php"
-  s.birthday = datetime.fromisoformat("1964-09-19T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jean Camp.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_BRENNAN
-  s.name = "John Brennan"
-  s.description = "Director CIA"
-  s.birthday = datetime.fromisoformat("1955-09-22T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/John Brennan.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CARLIN
-  s.name = "John P. Carlin"
-  s.description = "Assistant Attorney General"
-  s.custom = "Head of the Department of Justice's National Security Division (NSD)"
-  s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/John Carlin.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_MIFSUD
-  s.name = "Joseph Mifsud"
-  # https://public.substack.com/p/cia-had-foreign-allies-spy-on-trump
-  s.description = "Probable MI6 Asset. Page 312 of FBI FISA IG Report states 'no evidence Mifsud has ever acted as an FBI CHS'"
-  s.custom = "Told Papadopoulos about Clinton email before Papadopoulos met Alexander Downer"
-  s.birthday = datetime.fromisoformat("1960-04-01T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Joseph Mifsud.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CLINESMITH
-  s.name = "Kevin Clinesmith"
-  s.description = "FBI Lawyer, Convicted of falsifying records and lying on FISA warrant against Carter Page"
-  s.custom = "Author of 'Resistence' text message, illegally altered FISA warrant on Page"
-  s.birthday = datetime.fromisoformat("1982-05-18T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Kevin Clinesmith.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_PAGE
-  s.name = "Lisa C. Page"
-  s.description = "FBI Lawyer, McCabe's Legal Counsel"
-  s.custom = "Husband: Joseph Burrow, full name Lisa Caroline Page"
-  s.birthday = datetime.fromisoformat("1980-08-02T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Lisa Page.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_GAETA
-  s.name = "Michael Joseph Gaeta"
-  s.description = "Assistant FBI Legal Attaché (legat) in Rome, aka 'Handling Agent 1' in FBI IG Report"
-  s.custom = "Former member of the FBI's Eurasian Organized Crime unit, Steele's handler, possibly Mifsud's handler"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Gaeta.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_STRZOK
-  s.name = "Peter P. Strzok II"
-  s.description = "FBI, worked on Flynn case and Clinton EMail Case (Midyear Exam) Spent almost entire FBI career in counterintelligence"
-  s.custom = "Wife: Melissa Hodgman, full name Peter Paul Strzok"
-  s.birthday = datetime.fromisoformat("1970-03-07T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Peter Strzok.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_DEARLOVE
-  s.name = "Sir Richard Dearlove"
-  s.description = "Director BSIS (MI-6)"
-  s.birthday = datetime.fromisoformat("1945-01-23T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Richard Dearlove.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_HANNIGAN
-  s.name = "Robert Hannigan"
-  s.description = "Director GCHQ"
-  s.custom = "Resigned from GCHQ due to his helping paedophile priest avoid jail"
-  s.birthday = datetime.fromisoformat("1965-01-01T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Robert Hannigan.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_POWER
-  s.name = "Samantha Power"
-  s.description = "United States UN Ambassador"
-  s.custom = "Prolific intelligence unmasker. Made 260 unmasking requests in her last year in office. Clearly lacks the ability to think in the abstract."
-  s.birthday = datetime.fromisoformat("1970-09-21T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Samantha Power.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_KISLYAK
-  s.name = "Sergey Ivanovich Kislyak"
-  s.description = "Russia Ambassador"
-  s.custom = "Had phone calls with Flynn"
-  s.birthday = datetime.fromisoformat("1950-09-07T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sergey Ivanovich Kislyak.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_WOOD
-  s.name = "Sir Andrew Wood"
-  s.description = "British Ambassador to Russia"
-  s.custom = "Told John McCain of the Steele Dossier"
-  s.birthday = datetime.fromisoformat("1940-01-02T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sir Andrew Wood.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_HALPER
-  s.name = "Stefan Halper"
-  s.description = "FBI Asset code name Mitch, was sent as CHS to target Carter Page and Papadopoulos, aka 'Source 2' in FBI IG Report, aka CHS-1 in Durham Report"
-  s.custom = "Paid over $400,000 by U.S. government"
-  s.birthday = datetime.fromisoformat("1944-06-04T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Stefan Halper.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_RICE
-  s.name = "Susan E. Rice"
-  s.description = "National Security Advisor"
-  s.birthday = datetime.fromisoformat("1964-11-17T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Susan Rice.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CARTER_PAGE
-  s.name = "Carter Page"
-  s.description = "Trump Campaign Aide and former CIA informant."
-  s.custom = "AKA Crossfire Dragon"
-  s.birthday = datetime.fromisoformat("1971-06-03T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Carter Page.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CLAPPER
-  s.name = "James Clapper"
-  s.description = "Director National Intelligence (DNI)"
-  s.custom = "Leaked Flynn story to WP reporter David Ignatius"
-  s.birthday = datetime.fromisoformat("1941-03-14T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Clapper.png")
-  s.save()
-  s.tag("Leaker", "Leaked Flynn story to WP reporter David Ignatius", truxton.TAG_ORIGIN_HUMAN)
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_DANCHENKO
-  s.name = "Igor 'Iggy' Yurievich Danchenko"
-  s.description = "Steele's primary sub source, Paid FBI informant, worked at Brookings Institute"
-  s.birthday = datetime.fromisoformat("1978-05-05T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Igor Danchenko.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_GALKINA
-  s.name = "Olga Galkina"
-  s.description = "Igor Danchenko's primary source. Aka Source 3 in February 9, 2017 Electronic Communication.pdf"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Olga Galkina.png")
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_PIENTKA
-  s.name = "Joseph 'Joe' Pientka III"
-  # Facts we know about Joe
-  # From https://gw.geneanet.org/tdowling?lang=en&pz=erica+marie&nz=tork&p=joe&n=pientka&oc=2
-  # Wife: Melissa Anne Bristow
-  # He lived at 3227 20th Road N, Arlington VA from 2005-08-26 until 2020-07-03 when the gov't bought his house through LEXICON GOVERNMENT SERVICES LLC (N-DREA Not a market Sale)
-  s.description = "Washington Field Office FBI Supervisory Special Agent (SSA), Ran Crossfire Hurricane, interviewed Flynn at White House, gave Flynn defensive briefing"
-  s.custom = "AKA Special Agent-1 in Durham Report"
-  s.birthday = datetime.fromisoformat("1976-01-01T00:00:00-00:00")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_FLYNN
-  s.name = "Michael Flynn"
-  s.description = "Lt. General US Army, AKA Crossfire Razor"
-  s.birthday = datetime.fromisoformat("1958-12-24T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Flynn.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_BARNETT
-  s.name = "William J. Barnett"
-  s.description = "FBI Special Agent handled Flynn investigation then assigned to Special Counsel's Office (SCO)"
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_LITT
-  s.name = "Robert 'Bob' S. Litt"
-  s.description = "General Counsel to DNI Clapper, first person to have thought of Logan Act of 1799"
-  s.birthday = datetime.fromisoformat("1950-01-01T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Robert Litt.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_WISEMAN
-  s.name = "Jeffrey 'Jeff' Wiseman"
-  s.description = "FBI CHS #3, wore a wire, went to MGM Grand DC with George Papadopoulos, at the time he worked for Cerner Corporation in Chicago"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jeffery Wiseman.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_JAMES_BAKER
-  s.name = "James A. Baker"
-  s.description = "FBI General Counsel"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Baker.png")
-  # Email account "james.baker" according to Page 85 of 460365255-Flynn-motion-to-dismiss.pdf
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_SUSSMAN
-  s.name = "Michael Sussman"
-  s.description = "Partner at Perkins Coie Privacy and Data Security Practice. Fed Alfa Bank/Trump Campaign link to James Baker at FBI"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Sussman.png")
-  s.save()
-
-  s = t.newsubject()
-  # https://www.mylife.com/kathleen-kavalec/e435913687320
-  s.id = SUBJECT_ID_KAVALEC
-  s.name = "Kathleen Kavalec"
-  s.description = "Deputy Assistant Secretary, Bureau of European and Eurasian Affairs, Department of State. Met with Steele."
-  s.birthday = datetime.fromisoformat("1958-08-06T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Kathleen Kavalec.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_DOLAN
-  s.name = "Charles Halliday Dolan, Jr."
-  s.description = "Hillary Campaign PR-Executive-1. Started the pee tapes rumor, fed it to Danchenko. Works for KGlobal and Prism Public Affairs. Volunteered for Clinton campaign in 2016"
-  s.birthday = datetime.fromisoformat("1950-06-12T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Charles Dolan.png")
-  s.save()
-  # 1730 N Huntington Street, Arlington, VA 22205-2709
-
-  # Rudolph Contreras, https://www.24hourcampfire.com/ubbthreads/ubbthreads.php/topics/12723193/re-strzok-page-fisa-judge-entanglement-text-messsages
-  # Events to add
-  #  Strzok Page message about Rudy being appointed to FISC
-  #  Contreras accepting plea
-  #  Contreras stepping down from Flynn case
-  # https://everipedia.org/wiki/lang_en/Rudolph_Contreras
-  s = t.newsubject()
-  s.id = SUBJECT_ID_CONTRERAS
-  s.name = "Rudolph (Rudy) Contreras"
-  s.description = "FISC judge in contact with Strzok and Page"
-  s.birthday = datetime.fromisoformat("1962-12-06T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Rudolph Contreras.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_HELSON
-  s.name = "Kevin Helson"
-  s.description = "FBI Agent, WFO, Danchenko's handler"
-  s.save()
-  
-# https://www.washingtonexaminer.com/news/fbis-case-agent-1-stephen-somma-primarily-responsible-for-fisa-failures
-# States that Case Agent 1 in IG Report is Stephen Somma
-  s = t.newsubject()
-  s.id = SUBJECT_ID_SOMMA
-  s.name = "Stephen (Steve) Somma"
-  s.description = "FBI Agent, Crossfire Hurricane team"
-  s.save()
-  
-  s = t.newsubject()
-  s.id = SUBJECT_ID_AUTEN
-  s.name = "Brian James Auten"
-  s.description = "FBI Intelligence Analyst, Crossfire Hurricane team"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Brian Auten.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_BOWDICH
-  s.name = "David L. Bowdich"
-  s.description = "Deputy Director FBI, as of February 2021 he is Chief Security Officer of Disney"
-  s.birthday = datetime.fromisoformat("1969-03-14T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/David Bowdich.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_KORTAN
-  s.name = "Michael 'Mike' P. Kortan"
-  s.description = "Assistant Directory for Public Affairs FBI, resigned 15 Feb 2018 for accepting tickets to Nationals baseball game in May of 2016 (bribes)"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Kortan.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_COMEY
-  s.name = "James Brien Comey"
-  s.description = "Director FBI"
-  s.birthday = datetime.fromisoformat("1960-12-14T00:00:00-00:00")
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Comey.png")
-  s.save()
-  s.tag("Leaker", "Leaked notes to Daniel Richman to pass to NY Times", truxton.TAG_ORIGIN_HUMAN)
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_LAYCOCK
-  s.name = "Stephen C. Laycock"
-  s.description = "FBI Executive Assistant Director Intelligence Branch"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Stephen Laycock.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_BOONE
-  s.name = "Jennifer C. Boone"
-  s.description = "FBI Deputy Assistant Director for Counterintelligence"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jennifer Boone.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_RYBICKI
-  s.name = "James E. Rybicki"
-  s.description = "FBI Director Comey's Chief of Staff"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/James Rybicki.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_MOFFA
-  s.name = "Jonathan Moffa"
-  s.description = "FBI Agent"
-  #s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Jonathan Moffa.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_ANDERSON
-  s.name = "Trisha Anderson"
-  s.description = "Deputy General Counsel at FBI"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Trisha Anderson.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_STEINBACH
-  s.name = "Michael Steinbach"
-  s.description = "Executive Assistant Director of NSB at FBI, Preistap's boss. Had secret meetings with the press and received unauthorized gifts from the press."
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Steinbach.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_MOYER
-  s.name = "Sally Anne Moyer"
-  s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
-  s.description = "FBI unit chief Office of General Counsel (Agent 5 in June 2018 IG report), Anti-Trump person"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Sally Moyer.png")
-  s.save()
-
-  s = t.newsubject()
-  s.id = SUBJECT_ID_VARACALLI
-  s.name = "Michael F. Varacalli"
-  #s.birthday = datetime.fromisoformat("1974-01-01T00:00:00-00:00")
-  s.description = "FBI agent"
-  s.picture = b64(SUPPORT_DOCUMENTS_FOLDER + "Images/Michael Varacalli.png")
-  s.save()
-
-  print("The subjects of the investigation (aka suspects/players/persons of interest) created")
-  return None
-
-def create_tags(t: truxton.TruxtonObject) -> None:
-  t.createtag("AUS", "Actions probably taken by Australia")
-  t.createtag("CHS", "A Confidential Human Source Operation")
-  t.createtag("CIA", "Actions probably taken by CIA")
-  t.createtag("Court Filing", "This item was part of a court filing")
-  t.createtag("Crossfire Dragon", "FBI's investigation of Carter Page")
-  t.createtag("Crossfire Fury", "FBI's investigation of Paul Manafort")
-  t.createtag("Crossfire Razor", "FBI's investigation of Michael Flynn")
-  t.createtag("Crossfire Typhoon", "FBI's investigation of George Papadopoulos")
-  t.createtag("FD-1057", "FBI Electronic Communication")
-  t.createtag("FD-302", "FBI Interview Notes")
-  t.createtag("FD-1087", "FBI Collected Item Log")
-  t.createtag("FISA Abuse", "Things related to FISA abuse")
-  t.createtag("Hatred", "Expression of hatred of Trump")
-  t.createtag("iMessage", "Use of Apple iMessage for off the record conversations")
-  t.createtag("Leak", "Information leaked to the press")
-  t.createtag("Leaker", "This person leaked information to the press")
-  t.createtag("Memo", "This item is part of a memo")
-  t.createtag("Midyear Exam", "FBI's investigation of Hillary Clinton Email Server")
-  t.createtag("News Article", "This items is part of a news article")
-  t.createtag("Recorded", "There's an audio recording of this meeting")
-  t.createtag("Steele Report", "Information about the Steele Report")
-  t.createtag("Testimony", "This is part of testimony")
-  t.createtag("Text Messages", "This file contains text messages")
-  t.createtag("Unhappy", "All is not well in Hurricane-ville")
-  print("Created Tags")
-  return None
-
-# Utility Functions
-def unix_millisecond_epoch_to_ticks(unix_epoch: int) -> int:
-  NUMBER_OF_FILETIME_TICKS_IN_ONE_SECOND = 10000
-  FILETIME_OF_1970_01_01 = 116444736000000000
-  return FILETIME_OF_1970_01_01 + (unix_epoch * NUMBER_OF_FILETIME_TICKS_IN_ONE_SECOND)
-
-def date_to_filetime(dt: datetime) -> int:
-  return unix_millisecond_epoch_to_ticks(timegm(dt.timetuple()) * 1000)
-
-def ticks(iso8601: str) -> int:
-  return date_to_filetime(datetime.fromisoformat(iso8601))
-  
-def filetime_to_datetime(filetime: int) -> datetime:
-  delta = timedelta(seconds = filetime/10000000)
-  value = datetime( 1601, 1, 1 ) + delta
-  return value.replace(tzinfo=timezone.utc)
-
-def unix_millisecond_epoch_to_est_datetime(unix_epoch: int) -> datetime:
-  utc_time = filetime_to_datetime(unix_millisecond_epoch_to_ticks(unix_epoch))
-  est_timezone = zoneinfo.ZoneInfo('America/New_York')
-  est_time = utc_time.astimezone(est_timezone)
-  tzs = est_time.strftime('%:z')
-  
-  cc = ""
-  
-  if tzs == "-04:00":
-    cc = est_time.strftime('%Y-%m-%dT%H:%M:%S+04:00')
-  elif tzs == "-05:00":
-    cc = est_time.strftime('%Y-%m-%dT%H:%M:%S+05:00')
-  else:
-    cc = est_time.strftime('%Y-%m-%dT%H:%M:%S%:z')
-      
-  cc = est_time.strftime('%Y-%m-%dT%H:%M:%S-00:00')
-  return datetime.fromisoformat(cc)
-
-def b64(filename: str) -> str:
-  if os.path.isfile(filename):
-    with open( filename, "rb" ) as input_file:
-      data = input_file.read()
-      # It is suprisingly difficult to get a base64 string
-      # b64encode returns a byte array. Converting that to a string with str()
-      # adds crap to the string. We need to strip off the "b'" at the beginning
-      # and the ' at the end.
-      return str(base64.b64encode(data))[2:-1] 
-  return("=")
-
-def create_event_type(t: truxton.TruxtonObject, id: int, name: str) -> None:
-  event_type = t.neweventtype()
-  event_type.id = id
-  event_type.name = name
-  event_type.save()
-  return None
-
-def create_artifact_type(t: truxton.TruxtonObject, id: int, shortname: str, longname: str) -> None:
-  artifact_type = t.newartifacttype()
-  artifact_type.id = id
-  artifact_type.shortname = shortname
-  artifact_type.longname = longname
-  artifact_type.save()
-  return None
-
-def add_file(parent_truxton_file: truxton.TruxtonChildFileIO, filename: str) -> truxton.TruxtonChildFileIO:
-  child = parent_truxton_file.newchild()
-
-  if os.path.isfile(filename):
-    with open(filename, "rb") as source_file:
-      child.name = Path(filename).name
-      shutil.copyfileobj(source_file, child)
-  else:
-    child.name = filename
-
-  child.save()
-  return child
-
-def add_event(parent_file: truxton.TruxtonChildFileIO, start: str, end: str, title: str, description: str, type: int) -> truxton.TruxtonEvent:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  event = parent_file.newevent()
-  assert isinstance(event, truxton.TruxtonEvent)
-  event.start = datetime.fromisoformat(start)
-  event.end = datetime.fromisoformat(end)
-  event.title = title
-  event.description = description
-  event.type = type
-  event.save()
-  return event
-
-def add_group(child_file: truxton.TruxtonChildFileIO, name: str) -> truxton.TruxtonArtifact:
-  group = child_file.newartifact()
-  group.type = truxton.ENTITY_TYPE_GROUP
-  group.value = name
-  group.datatype = truxton.DATA_TYPE_ASCII
-  group.length = len(group.value)
-  group.save()
-  return group
-
-def add_name_and_email(child_file: truxton.TruxtonChildFileIO, name: str, email: str) -> None:
-  person = child_file.newartifact()
-  person.type = truxton.ENTITY_TYPE_PERSON
-  person.value = name
-  person.datatype = truxton.DATA_TYPE_ASCII
-  person.length = len(person.value)
-  person.save()
-  
-  email_address = child_file.newartifact()
-  email_address.type = truxton.ENTITY_TYPE_EMAIL_ADDRESS
-  email_address.value = email
-  email_address.datatype = truxton.DATA_TYPE_ASCII
-  email_address.length = len(email_address.value)
-  email_address.save()
-  
-  relation = child_file.newrelation()
-  relation.a = email_address.id
-  relation.atype = truxton.OBJECT_TYPE_ENTITY
-  relation.b = person.id
-  relation.btype = truxton.OBJECT_TYPE_ENTITY
-  relation.relation = truxton.RELATION_MESSAGE_ADDRESS
-  relation.save()
-  return None
-  
-def add_name_subject_and_email(child_file: truxton.TruxtonChildFileIO, name: str, subject_id: str, email: str) -> None:
-  person = child_file.newartifact()
-  person.type = truxton.ENTITY_TYPE_PERSON
-  person.value = name
-  person.datatype = truxton.DATA_TYPE_ASCII
-  person.length = len(person.value)
-  person.save()
-  
-  email_address_artifact = child_file.newartifact()
-  email_address_artifact.type = truxton.ENTITY_TYPE_EMAIL_ADDRESS
-  email_address_artifact.value = email
-  email_address_artifact.datatype = truxton.DATA_TYPE_ASCII
-  email_address_artifact.length = len(email_address_artifact.value)
-  email_address_artifact.save()
-  
-  relation = child_file.newrelation()
-  relation.a = email_address_artifact.id
-  relation.atype = truxton.OBJECT_TYPE_ENTITY
-  relation.b = person.id
-  relation.btype = truxton.OBJECT_TYPE_ENTITY
-  relation.relation = truxton.RELATION_MESSAGE_ADDRESS
-  relation.save()
-
-  split_address = email.split('@')
-  
-  email_address = TRUXTON_OBJECT.newmessageaddress()
-  email_address.account = split_address[0]
-  email_address.server = split_address[1]
-  email_address.name = name
-  email_address.save()
-  
-  # YES! This is very wonky
-  # Swap the endianess 
-  bites = struct.pack('<Q', email_address.combinedid)
-  reversed_value = struct.unpack('>Q', bites)
-  combined_id_guid = "{0:16x}".format(reversed_value[0]) + "{0:16x}".format(reversed_value[0])
-  
-  relation = child_file.newrelation()
-  relation.a = combined_id_guid
-  relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-  relation.b = person.id
-  relation.btype = truxton.OBJECT_TYPE_ENTITY
-  relation.relation = truxton.RELATION_COMBINED_ID
-  relation.save()
-
-  subject_relation = child_file.newrelation()
-  subject_relation.a = combined_id_guid
-  subject_relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-  subject_relation.b = subject_id
-  subject_relation.btype = truxton.OBJECT_TYPE_SUSPECT
-  subject_relation.relation = truxton.RELATION_COMBINED_ID
-  subject_relation.save()
-
-  return None
-
-def add_name_subject_and_phone_number(child_file: truxton.TruxtonChildFileIO, name: str, subject_id: str, phone_number: str) -> None:
-  person = child_file.newartifact()
-  person.type = truxton.ENTITY_TYPE_PERSON
-  person.value = name
-  person.datatype = truxton.DATA_TYPE_ASCII
-  person.length = len(person.value)
-  person.save()
-  
-  phone_number_artifact = child_file.newartifact()
-  phone_number_artifact.type = truxton.ENTITY_TYPE_PHONE_NUMBER
-  phone_number_artifact.value = phone_number
-  phone_number_artifact.datatype = truxton.DATA_TYPE_ASCII
-  phone_number_artifact.length = len(phone_number_artifact.value)
-  phone_number_artifact.save()
-  
-  relation = child_file.newrelation()
-  relation.a = phone_number_artifact.id
-  relation.atype = truxton.OBJECT_TYPE_ENTITY
-  relation.b = person.id
-  relation.btype = truxton.OBJECT_TYPE_ENTITY
-  relation.relation = truxton.RELATION_WORK_PHONE
-  relation.save()
-
-  subject_relation = child_file.newrelation()
-  subject_relation.a = phone_number_artifact.id
-  subject_relation.atype = truxton.OBJECT_TYPE_ENTITY
-  subject_relation.b = subject_id
-  subject_relation.btype = truxton.OBJECT_TYPE_SUSPECT
-  subject_relation.relation = truxton.RELATION_WORK_PHONE
-  subject_relation.save()
-
-  return None
-
-def entitle(old_title: str) -> str:
-  event_title = old_title.replace("\r", " ").replace("\n", " ").replace("  ", " ")
-   
-  maximum_event_title_length = 50
-
-  if ( len(event_title) > maximum_event_title_length ):
-    event_title = event_title[0:maximum_event_title_length] + "..."
-
-  return event_title
-  
-def mccabe_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  mccabe_combined_id = communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  page_combined_id = communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  if communication.finished() == False:
-    print( "Cannot finish McCabe to Page: " + subject )
-  
-  global mccabe_page_associations_were_made
-
-  if mccabe_page_associations_were_made == False:
-    # Now associate the numbers with faces
-
-    relation = parent_file.newrelation()
-    assert isinstance(relation, truxton.TruxtonRelation)
-    relation.a = mccabe_combined_id
-    relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-    relation.b = SUBJECT_ID_MCCABE
-    relation.btype = truxton.OBJECT_TYPE_SUSPECT
-    relation.relation = truxton.RELATION_COMBINED_ID
-    relation.save()
-
-    mccabe_page_associations_were_made = True
-
-  event_time = communication.sent
-  event_title = entitle("McCabe to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
-
-  return communication
-
-def page_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(MCCABE_PHONE_NUMBER, "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot finish Page to McCabe: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to McCabe: " + subject)
-    
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_MCCABE_PAGE_MESSAGE)
-  return communication
-
-def strzok_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  strzok_combined_id = communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  page_combined_id = communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  if communication.finished() == False:
-    print( "Cannot finish Strzok to Page: " + subject )
-
-  global strzok_page_associations_were_made
-
-  if strzok_page_associations_were_made == False:
-    # Now associate the numbers with faces
-
-    relation = parent_file.newrelation()
-    assert isinstance(relation, truxton.TruxtonRelation)
-    relation.a = strzok_combined_id
-    relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-    relation.b = SUBJECT_ID_STRZOK
-    relation.btype = truxton.OBJECT_TYPE_SUSPECT
-    relation.relation = truxton.RELATION_COMBINED_ID
-    relation.save()
-
-    relation = parent_file.newrelation()
-    relation.a = page_combined_id
-    relation.atype = truxton.OBJECT_TYPE_COMBINED_ID
-    relation.b = SUBJECT_ID_PAGE
-    relation.btype = truxton.OBJECT_TYPE_SUSPECT
-    relation.relation = truxton.RELATION_COMBINED_ID
-    relation.save()
-
-    strzok_page_associations_were_made = True
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
-
-  return communication
-
-def strzok_to_page_unix_epoch(parent_file: truxton.TruxtonChildFileIO, sent: int, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  # communication.sent = filetime_to_datetime(unix_millisecond_epoch_to_ticks(sent))
-  communication.sent = unix_millisecond_epoch_to_est_datetime(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Page: " + subject )
-  
-  event_time = communication.sent
-  event_title = entitle("Strzok to Page: " + subject)
-    
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
-  return communication
-
-def page_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot add Page to Strzok: " + subject )
-
-  event_time = str(communication.sent)
-  event_title = entitle("Page to Strzok: " + subject)
-    
-  add_event( parent_file, event_time, event_time, event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
-  return communication
-
-def page_to_strzok_unix_epoch(parent_file: truxton.TruxtonChildFileIO, sent: int, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = unix_millisecond_epoch_to_est_datetime(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot add Page to Strzok: " + subject )
-
-  event_time = communication.sent
-  
-  event_title = entitle("Page to Strzok: " + subject)
-
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_STRZOK_PAGE_MESSAGE)
-  return communication
-
-def page_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot add Page to Unknown: " + subject )
-  
-  event_time = communication.sent
-  event_title = entitle("Page to Unknown: " + subject)
-    
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
-
-  return communication
-
-def unknown_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(PAGE_PHONE_NUMBER, "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Page: " + subject )
-  
-  event_time = communication.sent
-  event_title = entitle("Unknown to Page: " + subject)
-    
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
-
-  return communication
-
-def unknown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Strzok: " + subject )
-  
-  event_time = communication.sent
-  event_title = entitle("Unknown to Strzok: " + subject)
-    
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
-
-  return communication
-
-def strzok_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  communication = parent_file.newcommunication()
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SMS
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant(STRZOK_PHONE_NUMBER, "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER )
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Unknown: " + subject )
-  
-  event_time = communication.sent
-  event_title = entitle("Strzok to Unknown: " + subject)
-    
-  add_event( parent_file, str(event_time), str(event_time), event_title, subject, truxton.EVENT_TYPE_SKYPE_CHAT)
-
-  return communication
-
 def add_durham_report(parent_file: truxton.TruxtonChildFileIO) -> None:
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "durhamreport.pdf")
   
@@ -17018,2258 +19578,6 @@ def add_durham_report(parent_file: truxton.TruxtonChildFileIO) -> None:
   add_event( child_file, "2016-09-25T12:00:00+04:00", "2016-09-25T12:05:00+04:00", "Carter Page writes a letter to Comey offering to be interviewed", "It was never acted upon. Durham Report page 67", EVENT_TYPE_CAMPAIGN )
 
   return None
-
-def lync_strzok_to_rybicki(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Rybicki: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Rybicki: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moyer_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moyer to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moyer to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_heide_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("caheide@lync.fbi.gov", "Curtis A. Heide", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Heide to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Heide to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_moyer(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Moyer: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Moyer: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_peiper(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("dpeiper@lync.fbi.gov", "D Peiper", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Peiper: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Peiper: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moyer_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moyer to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moyer to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_stefanik_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("klstefanik@lync.fbi.gov", "K L Stefanik", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Stefanik to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Stefanik to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_moyer(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Moyer: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Moyer: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_doinidis(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("jdoinidis@lync.fbi.gov", "Jessica Doinidis", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Doinidis: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Doinidis: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_perry(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("mjperry@lync.fbi.gov", "M J Perry", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Perry: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Perry: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_clinesmith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Clinesmith: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Clinesmith: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_clinesmith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Clinesmith: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Clinesmith: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_clinesmith_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Clinesmith to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Clinesmith to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_clinesmith_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("keclinesmith@lync.fbi.gov", "Kevin Clinesmith", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Clinesmith to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Clinesmith to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_unknown_to_rybicki(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Rybicki: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Unknown to Rybicki: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_unknown_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Unknown to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moyer_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("samoyer@lync.fbi.gov", "Sally Anne Moyer", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moyer to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moyer to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_bowdich(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("dlbowdich@lync.fbi.gov", "David L. Bowdich", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Bowdich: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Bowdich: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_rybicki_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Rybicki to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Rybicki to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_rybicki(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Rybicki: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Rybicki: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_rybicki_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("rybick@lync.fbi.gov", "James R. Rybicki", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Rybicki to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Rybicki to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_anderson(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("anderson@lync.fbi.gov", "Trisha Anderson", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Anderson: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Anderson: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moffa_to_anderson(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("anderson@lync.fbi.gov", "Trisha Anderson", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moffa to Anderson: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moffa to Anderson: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-def lync_unknown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Unknown to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_auten_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Auten to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Auten to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_auten_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Auten to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Auten to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_auten(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Auten: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Auten: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_auten(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("bjauten@lync.fbi.gov", "Brian Auten", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Auten: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Auten: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boetig_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boetig@lync.fbi.gov", "Brian Boetig", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boetig to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boetig to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boetig_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boetig@lync.fbi.gov", "Brian Boetig", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boetig to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boetig to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_unknown_to_boetig(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boetig@lync.fbi.gov", "Brian Boetig", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Boetig: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Unknown to Boetig: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_beers_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("beers@lync.fbi.gov", "Elizabeth Rae Beers", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Beers to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Beers to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_beers(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("beers@lync.fbi.gov", "Elizabeth Rae Beers", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Beers: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Beers: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_pientka_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Pientka to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Pientka to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_pientka_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Pientka to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Pientka to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_pientka(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Pientka: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Pientka: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_pientka(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pientka@lync.fbi.gov", "Joseph 'Joe' Pientka III", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Pientka: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Pientka: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_laird(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("mlaird@lync.fbi.gov", "Matt? Laird", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Laird: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Laird: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_marasco(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("jdmarasco@lync.fbi.gov", "Joseph 'Joe' D Marasco", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Marasco: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Marasco: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_ryan(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("meryan2@lync.fbi.gov", "M E Ryan", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Ryan: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Ryan: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_varacalli(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("mfvaracalli@lync.fbi.gov", "Michael F. Varacalli", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Varacalli: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Varacalli: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_varacalli_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("mfvaracalli@lync.fbi.gov", "Michael F. Varacalli", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Varacalli to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Varacalli to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_vandeun_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("bjvandeun@lync.fbi.gov", "Bryan J. Vandeun", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Vandeun to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Vandeun to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_mains_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ramains@lync.fbi.gov", "Rick A. Mains", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Mains to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Mains to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_mains(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("ramains@lync.fbi.gov", "Rick A. Mains", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Mains: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Mains: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_heard_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("kheard@lync.fbi.gov", "K Heard", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Heard to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Heard to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_nelson_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("jjnelson@lync.fbi.gov", "J J Nelson", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Nelson to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Nelson to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_group_11f1fbpp(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("11f1fbpp@lync.fbi.gov", "Group Lync Chat 11f1fbpp", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to 11f1fbpp: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to 11f1fbpp: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moffa_to_group_8q5h5l0r(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("8q5h5l0r@lync.fbi.gov", "Group Lync Chat 8q5h5l0r", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moffa to 8q5h5l0r: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moffa to 8q5h5l0r: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moffa_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moffa to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moffa to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_moffa(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Moffa: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Moffa: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_smith(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("jrsmith7@lync.fbi.gov", "J R Smith", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Smith: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Smith: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_haerte_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("haerte@lync.fbi.gov", "Paul H. Haertel", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Haertel to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Haertel to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_haerte(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("haerte@lync.fbi.gov", "Paul H. Haertel", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Haertel: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Haertel: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_jones(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("jones@lync.fbi.gov", "Robert \"Bob\" Allan Jones", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Jones: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Jones: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moffa_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moffa to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moffa to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_unknown_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Unknown to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_moffa_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Moffa to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Moffa to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_quinn_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("rpquinn@lync.fbi.gov", "Richard P. Quinn", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Quinn to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Quinn to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_page_to_miller(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("jmiller1@lync.fbi.gov", "J Miller", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("lcpage@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Page to Miller: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Page to Miller: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_miller_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("jmiller1@lync.fbi.gov", "J Miller", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Miller to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Miller to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_quinn_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("quinn@lync.fbi.gov", "Richard Quinn", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Quinn to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Quinn to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_quinn(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("quinn@lync.fbi.gov", "Richard Quinn", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Quinn: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Quinn: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_moffa(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("moffa@lync.fbi.gov", "Jonathan Moffa", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Moffa: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Moffa: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_carroll_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("tmcarroll@lync.fbi.gov", "T M Carroll", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("ppstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Carroll to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Carroll to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_rommal(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("rommal@lync.fbi.gov", "Eric J. Rommal", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Rommal: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Rommal: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_rommal_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("rommal@lync.fbi.gov", "Eric J. Rommal", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Rommal to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Rommal to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_kohler_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("kohler@lync.fbi.gov", "Alan E. Kohler, Jr.", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Kohler to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Kohler to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_curtin_to_mccabe(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("mccabe@lync.fbi.gov", "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("curtin@lync.fbi.gov", "Royce E. Curtin", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Curtin to McCabe: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Curtin to McCabe: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_mccabe_to_curtin(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("mccabe@lync.fbi.gov", "Andrew G. McCabe", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("curtin@lync.fbi.gov", "Royce E. Curtin", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add McCabe to Curtin: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("McCabe to Curtin: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_welch_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("welch@lync.fbi.gov", "FNU Welch", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Welch to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Welch to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_kohler(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("kohler@lync.fbi.gov", "Alan E. Kohler, Jr.", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Kohler: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Kohler: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_driscol_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("driscol@lync.fbi.gov", "Brian Driscoll", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Driscol to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Driscol to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_driscol(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("driscol@lync.fbi.gov", "Brian Driscoll", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Driscol: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Driscol: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_unknown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Unknown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Unknown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_page(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("page@lync.fbi.gov", "Lisa C. Page", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Page: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Page: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_unknown_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("fbi_unknown@lync.fbi.gov", "Unknown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Unknown to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Unknown to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_laycock(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("laycock@lync.fbi.gov", "Stephen C. Laycock", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Laycock: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Laycock: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_camp(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("camp@lync.fbi.gov", "FNU Camp", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Camp: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Camp: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_thomas(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("thomas@lync.fbi.gov", "FNU Thomas", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Thomas: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Thomas: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_thomas_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("thomas@lync.fbi.gov", "FNU Thomas", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Thomas to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Thomas to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_tricol(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("tricol@lync.fbi.gov", "FNU Tricol", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Boone to Tricol: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to Tricol: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_tricol_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("tricol@lync.fbi.gov", "FNU Tricol", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Tricol to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Tricol to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_camp_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("camp@lync.fbi.gov", "FNU Camp", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Camp to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Camp to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_laycock_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("laycock@lync.fbi.gov", "Stephen C. Laycock", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Laycock to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Laycock to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_laycock_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("laycock@lync.fbi.gov", "Stephen C. Laycock", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Laycock to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Laycock to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_mcgoniga_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add McGonigal to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("McGonigal to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_mcgoniga_to_boone(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add McGonigal to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("McGonigal to Boone: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_boone_to_mcgoniga(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("boone@lync.fbi.gov", "Jennifer C. Boone", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add McGonigal to Boone: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Boone to McGonigal: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_mcgoniga(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("mcgoniga@lync.fbi.gov", "Charles F. McGonigal", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to McGonigal: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to McGonigal: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_strzok_to_brown(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("brown@lync.fbi.gov", "John Brown", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Strzok to Brown: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Strzok to Brown: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
-
-def lync_brown_to_strzok(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_LYNC
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
-
-  communication.addparticipant("pstrzok@lync.fbi.gov", "Peter P. Strzok II", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  communication.addparticipant("brown@lync.fbi.gov", "John Brown", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_EMAIL_ADDRESS)
-  if communication.finished() == False:
-    print( "Cannot add Brown to Strzok: " + subject )
-
-  event_time = communication.sent
-  event_title = entitle("Brown to Strzok: " + subject)
-
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_LYNC_MESSAGE)
-
-  return communication
 
 def add_october_30(parent_file: truxton.TruxtonChildFileIO) -> None:
   child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "2020-12-09 DOJ to CEG RHJ (October 30 letter Strzok texts declassified).pdf")
@@ -20281,28 +20589,202 @@ def add_lync_text_messages(parent_file: truxton.TruxtonChildFileIO) -> None:
   
   return None
 
-def fbi_analysis_chat(parent_file: truxton.TruxtonChildFileIO, sent: str, subject: str) -> truxton.TruxtonCommunication:
-  assert isinstance(parent_file, truxton.TruxtonChildFileIO)
-  communication = parent_file.newcommunication()
-  assert isinstance(communication, truxton.TruxtonCommunication)
-  communication.sent = datetime.fromisoformat(sent)
-  communication.received = communication.sent
-  communication.subject = subject
-  communication.type = truxton.MESSAGE_TYPE_SKYPE
-  if communication.save() == False:
-    print( "Cannot save communication " + subject )
+def add_declassified_binder_4(parent_file: truxton.TruxtonChildFileIO) -> None:
+  child_file = add_file(parent_file, SUPPORT_DOCUMENTS_FOLDER + "848636562-Crossfire-Hurricane-Binder-4.pdf")
+  
+  url = child_file.newurl()
+  url.url = "https://www.scribd.com/document/848636562/Crossfire-Hurricane-Binder-4"
+  url.localfilename = "848636562-Crossfire-Hurricane-Binder-4.pdf"
+  url.type = truxton.URL_TYPE_FIREFOX
+  url.method = truxton.URL_METHOD_TYPE_CLICKED_ON_A_LINK
+  url.format = truxton.URL_FORMAT_ASCII
+  url.when = datetime.fromisoformat("2025-04-22T16:45:00+04:00")
+  url.save()
+  
+  add_name_and_phone_number( child_file, "Josh Margolin", SMITH_PHONE_NUMBER )
+  add_name_and_phone_number( child_file, "Eric Smith", MARGOLIN_PHONE_NUMBER )
+  add_name_and_phone_number( child_file, "Matt Apuzzo", APUZZO_PHONE_NUMBER )
+  add_name_and_phone_number( child_file, "David Ramadan", RAMADAN_PHONE_NUMBER )
+  
+  # Page 303 FBI-HJC119-CH-000303 848636562-Crossfire-Hurricane-Binder-4.pdf
+  page_to_mccabe( child_file, "2016-02-04T02:25:48+05:00", "Hey, I have a couple of thoughts on our potential leak issue. Can we can tonight or tomorrow? Maybe before the 10 if there is time.") # Item 1
+  mccabe_to_page( child_file, "2016-02-04T02:45:30+05:00", "Sure. Grab me in the morning.") # Item 2
+  page_to_mccabe( child_file, "2016-02-04T02:47:04+05:00", "Rgr") # Item 4
+  margolin_to_mccabe( child_file, "2016-02-18T15:12:11+05:00", "Andy: it's Josh Margolin at ABC. Thanks for your help on Saturday. Sorry to disrupt Yor vacation; hope it was good otherwise. Are you in DC Thurs of Friday next week? I have something very interesting and delicate I'd like to discuss with you - plus I'd like to finally meet you in person. Lunch or dinner or whatever is on me... Thanks.") # Item 5
+  mccabe_to_margolin( child_file, "2016-02-19T00:34:14+05:00", "I am around next week. As you can imagine I usually rely on Mike Kortan to set things like this up. I can have him reach out to you tomorrow if that works?") # Item 6
+  margolin_to_mccabe( child_file, "2016-02-19T03:05:21+05:00", "Sure. I was just trying to keep this informal and off the record. And John Cohen said I should make it my business to get to know you.") # Item 8
+  page_to_mccabe( child_file, "2016-03-03T01:34:57+05:00", "Apuzzo's article. Mostly much ado about nothing.\n\nAs Presidential Campaign Unfolds, So Do Inquiries into Clinton\u2019s Emails http://nyti.ms/24CsdOI") # Item 9
+  mccabe_to_page( child_file, "2016-03-03T02:23:43+05:00", "Thx") # Item 10
+  page_to_mccabe( child_file, "2016-03-22T02:27:23+04:00", "JM called to check in, and after discussing further, we both sort of think it would make sense to simply nip it in the bud with all the EADs tomorrow (\"I understand there been some discussion/concern about Lisa's role...\") and then just discuss with Randy and/or Castor in more detail later that day. Anyway, he can describe in more detail, but since these conversations have been happening with Eric anyway, it seems perfectly appropriate to being up.") # Item 11
+  
+  # Page 304 FBI-HJC119-CH-000304 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-03-22T09:00:08+04:00", "Ok") # Item 12
+  mccabe_to_page( child_file, "2016-03-24T01:48:48+04:00", "What is your meet on?") # Item 14
+  page_to_mccabe( child_file, "2016-03-24T01:49:58+04:00", "Mid-year meeting on Monday with toscas, laufman, et al.") # Item 15
+  mccabe_to_page( child_file, "2016-03-24T01:51:12+04:00", "We can pre meet maybe Fridau? Let's talk tomorrow.") # Item 16
+  apuzzo_to_mccabe( child_file, "2016-03-24T12:44:14+04:00", "Try to lunch or a drink next week or so?") # Item 18
+  mccabe_to_apuzzo( child_file, "2016-03-24T23:59:48+04:00", "Sure. Reach out to Kortan and have him set it up.") # Item 19
+  
+  # Page 305 FBI-HJC119-CH-000305 848636562-Crossfire-Hurricane-Binder-4.pdf
+  apuzzo_to_mccabe( child_file, "2016-03-25T00:00:16+04:00", "I did. He said he would. He's a busy guy!") # Item 20
+  mccabe_to_apuzzo( child_file, "2016-03-25T00:01:20+04:00", "I will poke him.") # Item 21
+  apuzzo_to_mccabe( child_file, "2016-03-25T00:01:30+04:00", "Cool thanks") # Item 22
+  mccabe_to_smith( child_file, "2016-04-09T21:33:18+04:00", "Bit of a kerfuffle on mid year today. Will probably need to set up a meeting on Thursday with our whole team and doj") # Item 23
+  smith_to_mccabe( child_file, "2016-04-09T21:41:12+04:00", "Copy. Hope you made it safe.") # Item 24
+  mccabe_to_smith( child_file, "2016-04-09T21:42:24+04:00", "Thanks. Just got on the bird. Lisa can help you with details for the meeting. Should be same crew that we had in the SIOC brief room two weeks ago.") # Item 25
+  page_to_mccabe( child_file, "2016-05-12T23:54:51+04:00", "Pete spoke to --Redacted-- and relayed your message. Told him you planned to relay to Carlin. --Redacted-- said he'd wait to hear from on high. Carlin and George are definitely going to push the message down.") # Item 26
+  mccabe_to_page( child_file, "2016-05-12T23:57:29+04:00", "Did not reach him tonight but will call in am. Glad u got out.") # Item 27
 
-  communication.addparticipant(UNKNOWN_FBI_ANALYST, "Unknown Analyst", truxton.MESSAGE_PARTICIPANT_FROM, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  communication.addparticipant(FBI_ANALYST_CHAT, "FBI Analysis Chat Room", truxton.MESSAGE_PARTICIPANT_TO, truxton.ENTITY_TYPE_PHONE_NUMBER)
-  if communication.finished() == False:
-    print( "Cannot finish Analyst Lync: " + subject )
+  # Page 306 FBI-HJC119-CH-000306 848636562-Crossfire-Hurricane-Binder-4.pdf
+  page_to_mccabe( child_file, "2016-05-13T00:00:55+04:00", "Thanks.") # Item 29
+  mccabe_to_margolin( child_file, "2016-05-31T22:43:34+04:00", "I hate to do this but I have to bail on tomorrow. Have to brief potus in the morning and if something happens and I don't make it I'll be in hugely deep sh-t.") # Item 31
+  mccabe_to_margolin( child_file, "2016-05-31T22:44:46+04:00", "Let me know if you need a ride into the city if you left your car.") # Item 33
+  m = margolin_to_mccabe( child_file, "2016-05-31T22:47:58+04:00", "No worries. POTUS should rate over a bike ride into the office.\n\nThanks for the offer. I will go ahead and ride in on my own.") # Item 34
+  m.addnote("McCabe used to bike to work.")
+  margolin_to_mccabe( child_file, "2016-06-01T12:01:51+04:00", "I hope potus appreciates the sacrifices that you made today. You missed a beautiful morning for a ride!") # Item 35
+  mccabe_to_margolin( child_file, "2016-06-01T14:37:44+04:00", "Don't rub it in. On way to WH now. Been studying all morning. Hope you enjoyed it.") # Item 36
+  page_to_mccabe( child_file, "2016-06-09T22:45:04+04:00", "Article out. I think we're sincerely okay. I honestly don't believe we had anything to do with your at all.") # Item 38
+  mccabe_to_page( child_file, "2016-06-09T23:14:45+04:00", "Awesome") # Item 39
+  page_to_mccabe( child_file, "2016-06-09T23:15:42+04:00", "It's in your email.") # Item 40
 
-  event_time = communication.sent
-  event_title = entitle("Analyst Lync: " + subject)
+  # Page 307 FBI-HJC119-CH-000307 848636562-Crossfire-Hurricane-Binder-4.pdf
+  page_to_mccabe( child_file, "2016-06-10T19:22:33+04:00", "This is what Pete just texted back.\n\nYes otd is ready.\n\nD is the one who asked how early we could talk tentative scheduling. D asked if we could do that now (at date of last brief). I said I thought we should wait until we had laptops in hand. D said, I think that's right. Thats what I was going off of.") # Item 41
+  page_to_mccabe( child_file, "2016-06-10T19:23:06+04:00", "If you want him to hold until we are actually in, we can.") # Item 42
+  page_to_mccabe( child_file, "2016-06-10T19:24:23+04:00", "Keep in mind, it will probably be at least a week before the investigative team actually sees anything.") # Item 43
+  page_to_mccabe( child_file, "2016-06-10T19:24:34+04:00", "Because we need to mirror, extract, then go thru filter.") # Item 44
+  mccabe_to_page( child_file, "2016-06-10T19:25:57+04:00", "I am inclined to wait for now. Let's get a peek at it first, see how long oyd thinks it will take to make sense of anything, etc.") # Item 45
+  mccabe_to_page( child_file, "2016-06-10T19:26:04+04:00", "I will call Pete.") # Item 46
+  page_to_mccabe( child_file, "2016-06-10T19:27:23+04:00", "Okay. Will tell pete.") # Item 47
+  
+  # +44 7713 089895 jeremyf@gcpd.gsi.gov.uk - gcpd is Government Communications Planning Directorate (GCPD)
+  # https://www.theguardian.com/uk-news/2021/mar/06/mi5-involvement-in-drone-project-revealed-in-paperwork-slip-up reports GCPD is a cover for MI-5
+  add_name_and_email( child_file, "Jeremy F", "jeremyf@gcpd.gsi.gov.uk" ) # Item 49
+  add_name_and_phone_number( child_file, "Jeremy F", JEREMY_PHONE_NUMBER ) # Item 49
+  jeremy_to_mccabe( child_file, "2016-06-24T08:35:14+04:00", "So much for my predictions... A sad day for the UK. Thanks for your. hospitality and friendship! Best. --Redacted/Jeremy--") # Item 48
+  mccabe_to_jeremy( child_file, "2016-06-24T09:41:00+04:00", "I am stunned. Hope it doesn't predict I similar outcome here in November.") # Item 49
 
-  add_event(parent_file, str(event_time), str(event_time), event_title, subject, EVENT_TYPE_FBI_ANALYST_MESSAGE)
+  # Page 308 FBI-HJC119-CH-000308 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_jeremy( child_file, "2016-06-24T09:42:33+04:00", "Great seeing you and --Redacted-- Enjoy the rest of the summer.") # Item 450
+  jeremy_to_mccabe( child_file, "2016-06-24T09:43:38+04:00", "Me too - madness.") # Item 51
+  jeremy_to_mccabe( child_file, "2016-06-24T09:45:11+04:00", "Best to --Redacted/Jill-- - really good to spend time with you both") # Item 52
+  page_to_mccabe( child_file, "2016-07-01T17:46:30+04:00", "Please remember to let Pete know if he can contact Richard/Laufman when you contact George. Thx.") # Item 53
+  mccabe_to_page( child_file, "2016-07-01T19:19:37+04:00", "About to meet with him now.") # Item 54
+  jeremy_to_mccabe( child_file, "2016-07-05T22:53:16+04:00", "You must be pleased that announcement is out of the way! Life in post-Brexit world feeling v strange. At least our core business remains unchanged... Best. --Redacted/Jeremy--") # Item 55
+  page_to_mccabe( child_file, "2016-07-08T00:26:59+04:00", "As he continues to testify about this, he probably needs to clarify that re the devices, there were multiple devices, but generally used once at a time. Same with the servers.") # Item 56
+  page_to_mccabe( child_file, "2016-07-08T00:27:44+04:00", "Unless I'm mistaken in the facts?...") # Item 57
+  page_to_mccabe( child_file, "2016-07-08T00:27:49+04:00", "In case --Redacted-- doesn't tell you that I called, have one other point that we maybe missed our explanation.") # Item 58
+  page_to_mccabe( child_file, "2016-07-12T23:16:10+04:00", "I have heard third hand that DC USAO may have called ODAG re the perjury referral, but I don't know who. I think Toscas may know, so if you think about it tomorrow after am briefs, maybe you can get a read from him about what they are thinking. Thanks.") # Item 59
 
-  return communication
+  # Page 309 FBI-HJC119-CH-000309 848636562-Crossfire-Hurricane-Binder-4.pdf
+  smith_to_mccabe( child_file, "2016-07-16T01:55:26+04:00", "Kallstrom was just on the Kelly File. Wow...He needs to put some tinfoil on his head because he's getting some heavy, heavy interference.") # Item 61
+  mccabe_to_smith( child_file, "2016-07-16T02:00:35+04:00", "Such a shame") # Item 62
+  page_to_mccabe( child_file, "2016-07-22T00:40:41+04:00", "The article I mentioned today,\n\nDonald Trump Sets Conditions for Defending NATO Allies Against Attack http:nyti.ms/2ai4u3g") # Item 63
+  mccabe_to_page( child_file, "2016-07-22T00:41:16+04:00", "Thx") # Item 64 is mislabelled as 61
+  mccabe_to_page( child_file, "2016-07-28T00:29:00+04:00", "Thanks much. I am at Eric's sad pad. Your BFF is here.") # Item 66
+  page_to_mccabe( child_file, "2016-07-28T00:35:55+04:00", "Girlfriend?! Wow, I didn't care about the blow-off invite, but now I actually am insulted!") # Item 67
+  page_to_mccabe( child_file, "2016-08-02T00:50:51+04:00", "Since your counsel failed to send this to you last night. \U0001f60a\n\nHow Paul Manafort Wielded Power in Ukraine Before Advising Donald Trump http://nyti.ms/2aFy026") # Item 68
+
+  # Page 310 FBI-HJC119-CH-000310 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-08-02T01:21:44+04:00", "Thanks very much counselor.") # Item 69
+  page_to_mccabe( child_file, "2016-08-02T01:43:17+04:00", "You're welcome. Apologies for the delay. :)\n\nAlso, let me know if you connect with --Redacted-- in the morning - I'll just give Pete a heads up if os.") # Item 70
+  mccabe_to_page( child_file, "2016-08-02T01:43:39+04:00", "No apology necessary. Ever.") # Item 71
+  # Jeremy's uniqueid is 5360
+  mccabe_to_jeremy( child_file, "2016-08-02T14:30:56+04:00", "Hey. I understand my folks met with yours today on our strange situation. Mike be good for you an I to touch base. Shall I have my folks set up a call? No rush, just would be good to hear your thoughts.") # Item 72
+  page_to_mccabe( child_file, "2016-08-10T02:57:43+04:00", "Emails Renew Questions About Clinton Foundation and State Dept. Overlap http://nyti.ms/2b4QwkF") # Item 73
+  page_to_mccabe( child_file, "2016-08-12T14:40:00+04:00", "Hey. What time does your flight leave? Baker pulling his usual \"oh, I didn't realize we were talking producing a carbon copy of the redacted 302s to state, which he is now fine with.\" Don't need to talk, just want to know when you are wheels up." ) # Item 74
+  mccabe_to_page( child_file, "2016-08-12T17:17:04+04:00", "2:44. At dulles now. Pat Kennedy was trying to reach me. I did not take the call.") # Item 75
+  page_to_mccabe( child_file, "2016-08-12T17:17:35+04:00", "Rgr. I think we've got a way forward, don't take it." ) # Item 76
+
+  # Page 311 FBI-HJC119-CH-000311 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-08-12T17:17:47+04:00", "10 4") # Item 77
+  page_to_mccabe( child_file, "2016-08-12T17:18:40+04:00", "Jim is inclined to give carbon copies of 302s to both --Redacted-- at time of production. That should alleviate their concerns. Just need to check it with the boss. Am drafting that email now. You will be on it." ) # Item 78
+  mccabe_to_page( child_file, "2016-08-12T17:22:33+04:00", "Sounds ok") # Item 79
+  page_to_mccabe( child_file, "2016-08-12T17:23:02+04:00", "Thanks." ) # Item 80
+  page_to_mccabe( child_file, "2016-08-17T10:55:38+04:00", "This is bad.\n\n\u2018Shadow Brokers\u2019 Leak Raises Alarming Question: Was the N.S.A. Hacked? http://nyti.ms/2bIOYD8" ) # Item 81
+  page_to_mccabe( child_file, "2016-08-28T13:23:59+04:00", "A Powerful Russian Weapon: The Spread of False Stories http://nyti.ms/2bR9n3c" ) # Item 82
+  page_to_mccabe( child_file, "2016-08-29T23:37:33+04:00", "Well this is not good.\n\nAn article to share: FBI probes foreign hacks of state election systems\nFBI probes foreign hacks of state election systems\nhttp://wapo.st/2bMtYlH" ) # Item 83
+  mccabe_to_page( child_file, "2016-08-30T01:00:15+04:00", "Great.") # Item 84
+
+  # Page 312 FBI-HJC119-CH-000312 848636562-Crossfire-Hurricane-Binder-4.pdf
+  page_to_mccabe( child_file, "2016-09-10T13:53:28+04:00", "Do you want someone from the investigative team on the call?" ) # Item 85
+  mccabe_to_page( child_file, "2016-09-10T13:55:28+04:00", "Probably a good idea.") # Item 86
+  page_to_mccabe( child_file, "2016-09-10T13:56:21+04:00", "Okay, I'll ask Pete if he is free. Should I send an email to the group informing them, or do you just want to mention when the call starts?" ) # Item 87
+  mccabe_to_page( child_file, "2016-09-10T14:44:09+04:00", "No email necessary.") # Item 88
+  page_to_mccabe( child_file, "2016-09-12T21:53:02+04:00", "Unsolicited comments from someone watching right now:\n\nOmg Gowdy is being a total dick. All investigative questions. And Jason isn't always sticking to the script on \"I'm not answering that.\"" ) # Item 89
+  mccabe_to_page( child_file, "2016-09-12T22:41:50+04:00", "Wow. Reconvening the open session at 730. Then going to closed after that.") # Item 90
+  page_to_mccabe( child_file, "2016-09-12T21:53:02+04:00", "Oof. How painful." ) # Item 91
+
+  # Page 313 FBI-HJC119-CH-000313 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-09-27T02:23:33+04:00", "Snap on your safety belt. It's going to be a bumpy ride.") # Item 93
+  page_to_mccabe( child_file, "2016-09-27T03:01:56+04:00", "Seriously. Big league." ) #Item 94
+  page_to_mccabe( child_file, "2016-10-05T13:37:30+04:00", "I'm with Kortan. Nyt has the wrong name still, we believe. Not sure if that changes your calculus. I told CD that story was imminent." ) # Item 95
+  page_to_mccabe( child_file, "2016-10-05T13:37:54+04:00", "Re statement, still not cleared thru interagency, but Kortan and I will draft something for you to say now." ) # Item 96
+  mccabe_to_page( child_file, "2016-10-05T13:40:00+04:00", "Ok") # Item 97
+  page_to_mccabe( child_file, "2016-10-05T13:47:15+04:00", "Just sent something you can say via email. OGC and kortan were good with it" ) # Item 98
+  mccabe_to_page( child_file, "2016-10-05T13:47:30+04:00", "Ok") # Item 99
+  page_to_mccabe( child_file, "2016-10-09T18:42:54+04:00", "Not sure if you have your eras, but Bill asked Pete to send you an email about some intel that they just discovered in CyD past holdings that has relevance to our surrent stuff. They passed to the TF and expect it will get briefed up, so they wanted to make sure you had it asap. I haven't had a chance to check it out yet. Let me know if you want them to get it to you some other way." ) # Item 100
+
+  # Page 314 FBI-HJC119-CH-000314 848636562-Crossfire-Hurricane-Binder-4.pdf
+  page_to_mccabe( child_file, "2016-10-09T19:55:49+04:00", "Okay. I'll ask Pete to send it to him on eras. Thanks." ) # Item 101
+  page_to_mccabe( child_file, "2016-10-12T19:56:12+04:00", "Hey one clarification: the thumb drives and the spreadsheet are different actors, but obviously from the same place. But there could still be insight derived from the drives which illuminates the list since it comes from the same bosses." ) # Item 102
+  mccabe_to_page( child_file, "2016-10-12T20:32:36+04:00", "Yup. Got it.") # Item 103
+  page_to_mccabe( child_file, "2016-10-14T13:54:58+04:00", "You haven't heard from State, correct? We gave them until 10 am eastern to raise their concerns. Our plan is to proceed with the unredacted production to the Hill if we don't hear anything in the next few minutes." ) # Item 104
+  mccabe_to_page( child_file, "2016-10-14T14:29:50+04:00", "I have not heard anything from them.") # Item 105
+  page_to_mccabe( child_file, "2016-10-14T14:30:11+04:00", "Rgr." ) # Item 106
+  #page_to_mccabe( child_file, "2016-10-14T14:43:17+04:00", "Can you follow up with --Redacted-- again? I spoke to --Redacted-- she also had the same understanding that we would go alone.\n\nAlso, it would be very very helpful to get DDCIA to clarify that they DO want the content. The DAG continues to use that as an excuse." ) # Item 107
+  page_to_mccabe(child_file, "2016-10-14T10:43:17+04:00", "Can you follow up with Neil again? I spoke to Tash, she also had the same understanding that we cold go alone.\n\nAlso, it would be very very helpful to get DDCIA to clarify that they DO want the content. The DAG continues to use that as an excuse.")
+  #page_to_mccabe( child_file, "2016-10-14T14:44:11+04:00", "Finally, it looks like --Redacted-- did not get the call from the senator's ofc, that was inaccurate. --Redacted-- has it now." ) # Item 108
+  page_to_mccabe( child_file, "2016-10-14T10:44:11+04:00", "Finally, it looks like BA did not get the call from the senator's ofc, that was inaccurate. BA has it now.")
+
+  # Page 315 FBI-HJC119-CH-000315 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-10-14T14:45:53+04:00", "Ok. Thanks.") # Item 109
+  # Unredacted version elsewhere
+  #mccabe_to_page( child_file, "2016-10-14T14:47:44+04:00", "I told --Redacted-- office you would be the point person on setting it up for us. Maybe you can call his assistant and ask her if he is ready to schedule. If the answer is no, then tell her I will talk to him again.") # Item 110
+  mccabe_to_page( child_file, "2016-10-14T10:47:44+04:00", "I told Neils office you would be the point person on setting it up for us. Maybe you can call his assistant and ask her if he is ready to schedule. If the answer is no, then tell her I will need to talk to him again.") # Item 110
+  mccabe_to_page( child_file, "2016-10-14T14:48:58+04:00", "She is --Redacted--") # Item 111
+  page_to_mccabe( child_file, "2016-10-14T14:51:18+04:00", "Got it. Will call now." ) # Item 112
+  page_to_mccabe( child_file, "2016-10-14T14:57:36+04:00", "Just called. Apparently the DAG now wans to be there, and WH wants DOJ to host. So we are setting that up now.\n\nWe will very much need to get Cohen's view before we meet with her. Better, have him weigh in with her before the meeting. We need to speak with one voice, if that is in fact the case." ) # Item 113
+  m = page_to_mccabe( child_file, "2016-10-14T14:58:02+04:00", "I also have moffa writing up everything cyd knows about what is on those drives. Will be ready by monday." ) # Item 114
+  m.addnote("cyd - FBI Cyber Division")
+  mccabe_to_page( child_file, "2016-10-14T15:27:22+04:00", "Thanks. I will reach out to David.") # Item 115
+  page_to_mccabe( child_file, "2016-10-24T19:01:19+04:00", "Wow. God I don't even know what to do about this." ) # Item 116
+
+  # Page 316 FBI-HJC119-CH-000316 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-10-24T19:02:58+04:00", "Ditto.") # Item 117
+  page_to_mccabe( child_file, "2016-10-24T19:04:09+04:00", "Going to give to jon pete bill so we can run down dates at a minimum." ) # Item 118
+  mccabe_to_page( child_file, "2016-10-24T19:07:50+04:00", "Ok") # Item 119
+  mccabe_to_page( child_file, "2016-10-24T20:35:18+04:00", "Ok. Do we have a date time for this hill appearance") # Item 120
+  m = page_to_mccabe( child_file, "2016-10-24T20:36:48+04:00", "No. Still waiting to hear back from HOGR" ) # Item 121
+  m.addnote("HOGR - House Committee on Oversight and Government Reforms")
+  mccabe_to_page( child_file, "2016-10-24T20:37:06+04:00", "Ok") # Item 122
+  ramadan_to_mccabe( child_file, "2016-10-24T22:45:10+04:00", "Andrew, left you a voice message earlier. I heard the news ... I'm sorry that the ugly head of today's politics is now after you ... I hope this tin-foil conspiracy crap will pass soon. Hand in there and thank you for your continuous service to our country. Please let me know if I can be of any help or service to you! David Ramadan" ) # Item 123
+
+  # Page 317 FBI-HJC119-CH-000317 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_ramadan( child_file, "2016-10-25T00:53:00+04:00", "Thanks very much for the thoughtful message. I got your voice mail earlier but it's been a crazy day. It is unfortunate that the political climate has become so toxic. But we will continue to do whatever is necessary to protect this great country, no matter which wy the wind blows." ) # Item 126
+  ramadan_to_mccabe( child_file, "2016-10-25T00:54:30+04:00", "You're a gentleman and a patriot. Hang in there & God Bless \U0001f1fa\U0001f1f8\U0001f1fa" ) # Item 127
+  mccabe_to_unknown( child_file, "2016-10-25T23:40:13+04:00", "Thanks dude. It is a bit crazy right now but we will get through it. I really appreciate the kind thoughts. Good to know there are a few sane people left." ) # Item 130
+  page_to_mccabe( child_file, "2016-10-27T09:06:52+04:00", "You talk to the boss last night? Am I still good to set up a meeting with him and the team for today?" ) # Item 132
+
+  # Page 318 FBI-HJC119-CH-000318 848636562-Crossfire-Hurricane-Binder-4.pdf
+  mccabe_to_page( child_file, "2016-10-27T09:14:29+04:00", "You are good to set up. I am free any time from 0900 to 1200, then from 1400 to 1600. Did not connect last night but will send email to him and Jim." ) # Item 133
+  page_to_mccabe( child_file, "2016-10-27T11:05:00+04:00", "Call will be at 10am. Invite should follow shortly." ) # Item 134
+  mccabe_to_page( child_file, "2016-10-27T11:22:56+04:00", "Thanks." ) # Item 135
+  page_to_mccabe( child_file, "2016-10-27T11:23:37+04:00", "We will probably end up calling you, but will let you know." ) # Item 136
+  mccabe_to_page( child_file, "2016-10-27T11:24:38+04:00", "Ok" ) # Item 137
+  page_to_mccabe( child_file, "2016-10-27T15:41:34+04:00", "Letter is not going to mention your recusal. Still waiting on Jim Baker." ) # Item 138
+  page_to_mccabe( child_file, "2016-10-27T15:43:23+04:00", "But it still doesn't change that if you are recused, it will undermine from the workforce." ) # Item 139
+  mccabe_to_page( child_file, "2016-10-27T15:53:22+04:00", "Agree" ) # Item 140
+
+  # Page 319 FBI-HJC119-CH-000319 848636562-Crossfire-Hurricane-Binder-4.pdf
+  page_to_mccabe( child_file, "2016-10-27T15:54:09+04:00", "Still waiting. He should be out at noon. I won't let him leave I have spoken to him." ) # Item 141
+  mccabe_to_page( child_file, "2016-10-27T15:59:07+04:00", "Strongly urge him to get me on the phone." ) # Item 142
+  m = page_to_mccabe( child_file, "2016-10-27T16:02:49+04:00", "I will. I'm going in with CF matter as cover for action, assume he will tell me re MYE. If not I will go back to Pete and Sally." ) # Item 143
+  m.addnote("CF is Crossfire Fury - Paul Manafort, case number 97F-HQ-2067749, Opened 10 Aug 2016")
+  mccabe_to_page( child_file, "2016-10-27T16:06:39+04:00", "Are you in with wsj now?" ) # Item 144
+  page_to_mccabe( child_file, "2016-10-27T16:19:42+04:00", "Going there now. I Wl call you immediately after re call with devlin. Think I have Jim back in the box. Will call you as soon as devlin is done." ) # Item 145
+
+
+  return None
 
 if __name__ == "__main__":
   sys.exit(main())
@@ -20319,25 +20801,35 @@ if __name__ == "__main__":
 # Office of General Counsel Core Management
 #  Sally Anne Moyer
 # Other players
+#  Adam Goldman - Associated Press
 #  Alan E. Kohler, Jr. - FBI Chief of the Eurasian Section
 #  Anthony Weiner - Huma Abedin's husband. Former house of representatives member, convicted of sending nudes of himself to a minor
 #  Brian Boetig - Assistant Director of FBI's International Operations Division from 2015 to 2022 (https://www.fticonsulting.com/about/newsroom/press-releases/former-director-of-fbi-national-cyber-investigative-joint-task-force-joins-fti-consulting)
+#  Carl Ghattas - FBI special agent in charge of the Counterterrorism Division at the Washington Field Office
 #  Charles McGonigal - FBI Special Agent in Charge (SAC) of Ney York Field Office
 #  David Laufman, head of DOJ's counterintelligence division
+#  David Ramadan - Virginia House of Delegates, 87th district
 #  Elizabeth Rae Beers - FBI Office of Congressional Affairs (OCA)
 #  Eric J. Rommal - FBI Deputy Assistant Director in Directorate of Intelligence
+#  Eric Smith - 
 #  George Toscas - DOJ poc for CH
 #  Gregory Brower, FBI congressional liaison
+#  Gregory 'Greg' Sheehy - FBI agent on Menedez case
 #  Huma Abedin - Hillary Clinton's favorite assistant
 #  Jennifer C. Boone - FBI Deputy Assistant Director for Counterintelligence, she was in charge of the team validating the sources used in the Steele reports
+#  Jeremy F - MI5 official
 #  Jim Baker - FBI General Counsel
 #  Jim Rybicki - FBI Director Comey's Chief of Staff
 #  John Carlin - Head of DOJ national security division, McCord's boss
+#  John Cohen - ABC News reporter
 #  John Giacalone - FBI Assistant Director of Counterterrorism Division
+#  Joseph 'Joe' Campbell - FBI Assistant Director of Criminal Investigative Division
 #  Joseph 'Joe' D Marasco - FBI Assistant Section Chief Counterintelligence
+#  Josh Margolin - ABC news reporter
 #  Kevin Clinesmith - FBI Assistant General Counsel National Security and Cyber Law Branch Counterintelligence Law Unit I, Convicted of falsifying records and lying on FISA warrant against Carter Page
 #  Lisa Page - Counsel assigned to Deputy Directory Andrew McCabe
 #  Mary McCord - DOJ lawyer, Toscas' boss at DOJ
+#  Matt Apuzzo - Reporter at New York Times
 #  Michael Steinbach - Executive Assistant Director, Preistap's boss
 #  Micheal F. Varacalli - FBI Section Chief, Counterespionage
 #  Paul H. Haertel -  FBI chief of the Counterintelligence Division's Counterespionage Section  https://www.fbi.gov/about/leadership-and-structure/haertel
@@ -20346,4 +20838,3 @@ if __name__ == "__main__":
 #  Royce E. Curtin - 
 #  Tashina Gauhar, DOJ official
 #  Trisha Anderson - Deputy General Counsel at FBI
-
